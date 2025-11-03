@@ -95,18 +95,34 @@ export async function apiRequest<T>(
             headers,
         });
 
+        // Handle 204 No Content - no body to parse
+        if (response.status === 204) {
+            return undefined as T;
+        }
+
         // Parse response body
         let data: any;
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
             data = await response.json();
         } else {
-            data = await response.text();
+            // For non-JSON responses, try to read as text
+            const text = await response.text();
+            data = text || undefined;
         }
 
         // Handle error responses
         if (!response.ok) {
-            const error: ApiError = data;
+            // If we got an error but no data, create a generic error
+            if (!data) {
+                throw new ApiClientError(
+                    response.status,
+                    `Request failed with status ${response.status}`,
+                    undefined
+                );
+            }
+
+            const error: ApiError = typeof data === 'string' ? { detail: data } : data;
             throw new ApiClientError(
                 response.status,
                 error.detail || 'An error occurred',
@@ -188,4 +204,98 @@ export async function apiPatch<T>(
  */
 export async function apiDelete<T>(endpoint: string): Promise<T> {
     return apiRequest<T>(endpoint, { method: 'DELETE' });
+}
+
+// ===== RIDE API FUNCTIONS =====
+
+import type {
+    Ride,
+    RideCreateData,
+    RideUpdateData,
+    RideListResponse,
+    RideQueryParams,
+    RideStatusUpdate,
+} from '../types';
+
+/**
+ * Create a new ride offer or request
+ * @param data - Ride creation data
+ * @returns Created ride
+ */
+export async function createRide(data: RideCreateData): Promise<Ride> {
+    return apiPost<Ride>('/api/rides', data);
+}
+
+/**
+ * Get a specific ride by ID
+ * @param rideId - UUID of the ride
+ * @returns Ride details
+ */
+export async function getRide(rideId: string): Promise<Ride> {
+    return apiGet<Ride>(`/api/rides/${rideId}`);
+}
+
+/**
+ * List rides with optional filtering and pagination
+ * @param params - Query parameters for filtering and pagination
+ * @returns Paginated list of rides
+ */
+export async function listRides(params?: RideQueryParams): Promise<RideListResponse> {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+
+    if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                queryParams.append(key, String(value));
+            }
+        });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/api/rides?${queryString}` : '/api/rides';
+
+    return apiGet<RideListResponse>(endpoint);
+}
+
+/**
+ * Update an existing ride
+ * @param rideId - UUID of the ride to update
+ * @param data - Fields to update
+ * @returns Updated ride
+ */
+export async function updateRide(rideId: string, data: RideUpdateData): Promise<Ride> {
+    return apiPatch<Ride>(`/api/rides/${rideId}`, data);
+}
+
+/**
+ * Delete/cancel a ride
+ * @param rideId - UUID of the ride to delete
+ */
+export async function deleteRide(rideId: string): Promise<void> {
+    return apiDelete<void>(`/api/rides/${rideId}`);
+}
+
+/**
+ * Update ride status (cancel or complete)
+ * @param rideId - UUID of the ride
+ * @param status - New status
+ * @returns Updated ride
+ */
+export async function updateRideStatus(
+    rideId: string,
+    status: RideStatusUpdate
+): Promise<Ride> {
+    return apiPatch<Ride>(`/api/rides/${rideId}/status`, status);
+}
+
+/**
+ * Get rides posted by the current user
+ * @param params - Optional query parameters
+ * @returns List of user's rides
+ */
+export async function getMyRides(params?: RideQueryParams): Promise<RideListResponse> {
+    // TODO: Update this once backend implements a dedicated /rides/my endpoint
+    // For now, we'll need to filter client-side by driver_id after fetching
+    return listRides(params);
 }

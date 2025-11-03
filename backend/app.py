@@ -13,7 +13,7 @@ from sqlalchemy import text, select
 
 from src.config.db import init_db, close_db, get_async_session
 from src.models import User, Ride, Booking, Review
-from src.routes import auth_router, users_router
+from src.routes import auth_router, users_router, rides_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -66,6 +66,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Include API routers
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(rides_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])
@@ -113,79 +114,8 @@ async def health_check():
 
 
 
-# API Endpoints
-# These demonstrate the toJson functionality for model serialization
-
-@app.get("/api/users", tags=["Users"])
-async def get_users():
-    """
-    Get all users with JSON serialization.
-    Demonstrates the toJson functionality.
-    """
-    try:
-        async with get_async_session() as session:
-            result = await session.execute(select(User).limit(5))
-            users = result.scalars().all()
-            
-            # Use the toJson method to serialize users
-            return {"users": [user.toJson() for user in users]}
-    except Exception as e:
-        logger.error(f"Error getting users: {e}")
-        return {
-            "error": "Failed to get users",
-            "details": str(e)
-        }
-
-@app.get("/api/rides", tags=["Rides"])
-async def get_rides():
-    """Get all rides with JSON serialization."""
-    try:
-        async with get_async_session() as session:
-            result = await session.execute(select(Ride).limit(5))
-            rides = result.scalars().all()
-            
-            # Use the toJson method to serialize rides
-            return {"rides": [ride.toJson() for ride in rides]}
-    except Exception as e:
-        logger.error(f"Error getting rides: {e}")
-        return {
-            "error": "Failed to get rides",
-            "details": str(e)
-        }
-
-@app.get("/api/bookings", tags=["Bookings"])
-async def get_bookings():
-    """Get all bookings with JSON serialization."""
-    try:
-        async with get_async_session() as session:
-            result = await session.execute(select(Booking).limit(5))
-            bookings = result.scalars().all()
-            
-            # Use the toJson method to serialize bookings
-            return {"bookings": [booking.toJson() for booking in bookings]}
-    except Exception as e:
-        logger.error(f"Error getting bookings: {e}")
-        return {
-            "error": "Failed to get bookings",
-            "details": str(e)
-        }
-
-@app.get("/api/reviews", tags=["Reviews"])
-async def get_reviews():
-    """Get all reviews with JSON serialization."""
-    try:
-        async with get_async_session() as session:
-            result = await session.execute(select(Review).limit(5))
-            reviews = result.scalars().all()
-            
-            # Use the toJson method to serialize reviews
-            return {"reviews": [review.toJson() for review in reviews]}
-    except Exception as e:
-        logger.error(f"Error getting reviews: {e}")
-        return {
-            "error": "Failed to get reviews",
-            "details": str(e)
-        }
+# Demo endpoints removed - using proper route modules instead
+# See src/routes/ for all API endpoints
 
 @app.get("/api/test", tags=["Test"])
 async def test_api():
