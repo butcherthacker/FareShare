@@ -14,3 +14,15 @@ export type {
     AuthContextType,
     ApiError,
 } from './auth';
+
+export type {
+    RideType,
+    RideStatus,
+    DriverInfo,
+    RideCreateData,
+    RideUpdateData,
+    Ride,
+    RideListResponse,
+    RideQueryParams,
+    RideStatusUpdate,
+} from './ride';

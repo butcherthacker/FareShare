@@ -169,6 +169,7 @@ class Ride(Base):
     
     # ===== RIDE STATUS =====
     # Lifecycle of a ride:
+    # "requested" -> passenger looking for ride
     # "open" -> ride is accepting bookings
     # "full" -> all seats booked
     # "cancelled" -> driver cancelled the ride
@@ -179,7 +180,15 @@ class Ride(Base):
         nullable=False,
         server_default="open",  # New rides start as open
         index=True,  # Speed up status filtering
-        comment="Ride state: open, full, cancelled, or completed"
+        comment="Ride state: requested, open, full, cancelled, or completed"
+    )
+    
+    # ===== ADDITIONAL INFORMATION =====
+    # Optional notes from user (e.g., "I have luggage", "Looking for quiet ride")
+    notes = Column(
+        String(500),
+        nullable=True,
+        comment="Additional notes or preferences from user"
     )
     
     # ===== TIMESTAMPS =====
@@ -202,8 +211,13 @@ class Ride(Base):
             name="check_seats_range"
         ),
         # Status must be one of these exact values
+        # "requested" = passenger looking for ride (ride request)
+        # "open" = driver offering ride, accepting bookings
+        # "full" = all seats booked
+        # "cancelled" = ride cancelled
+        # "completed" = ride finished
         CheckConstraint(
-            "status IN ('open', 'full', 'cancelled', 'completed')",
+            "status IN ('requested', 'open', 'full', 'cancelled', 'completed')",
             name="check_ride_status"
         ),
         # Total seats must be positive (can't have 0-seat ride)

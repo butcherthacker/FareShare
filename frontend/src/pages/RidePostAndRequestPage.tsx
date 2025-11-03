@@ -9,97 +9,334 @@ import {
   MessageSquare, 
   Car, 
   Star,
-  TrendingUp,
   MapPinned,
   Clock,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  Edit2,
+  Trash2,
+  XCircle,
+  Loader2,
+  AlertCircle,
+  UserCircle
 } from "lucide-react";
+import { useRides } from "../hooks/useRides";
+import { useAuth } from "../hooks/useAuth";
+import type { RideCreateData, Ride } from "../types";
 
 type Mode = "rider" | "driver";
-interface RideData {
+
+/**
+ * Form data interface for ride creation
+ */
+interface RideFormData {
   from: string;
   to: string;
   date: string;
-  seats?: number;
-  cost?: number;
-  note?: string;
-  mode: Mode;
+  seats: number;
+  cost: number;
+  note: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_color: string;
+  vehicle_year: number | undefined;
 }
 
+/**
+ * Editing state interface
+ */
+interface EditingRide {
+  id: string;
+  data: RideFormData;
+}
+
+/**
+ * RidePostAndRequestPage Component
+ * Allows users to post ride offers (as driver) or ride requests (as rider)
+ * Displays user's current postings/requests below the map
+ * Supports creating, updating, and deleting rides
+ */
 export default function RidePostAndRequestPage() {
+  const { user, isAuthenticated } = useAuth();
+  const { 
+    rides, 
+    isLoading, 
+    error, 
+    createRide, 
+    updateRide, 
+    deleteRide,
+    fetchMyRides,
+    clearError
+  } = useRides();
+
+  // UI state
   const [mode, setMode] = useState<Mode>("rider");
-  const [form, setForm] = useState<RideData>({
+  const [form, setForm] = useState<RideFormData>({
     from: "",
     to: "",
     date: "",
     seats: 1,
     cost: 0,
     note: "",
-    mode: "rider",
+    vehicle_make: "",
+    vehicle_model: "",
+    vehicle_color: "",
+    vehicle_year: undefined,
   });
   const [coords, setCoords] = useState<[number, number][]>([]);
   const [confirmation, setConfirmation] = useState("");
-  const [trips, setTrips] = useState<any[]>([]);
+  const [editingRide, setEditingRide] = useState<EditingRide | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
 
-  // --- [TEMP] mock backend endpoints -----------------------------------------------
-  async function postRide(data: RideData) {
-    const res = await fetch("/rides", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    return res.ok ? await res.json() : { id: Date.now(), ...data };
-  }
-
-  async function getRide(id: number | string) {
-    const res = await fetch(`/rides/${id}`);
-    return res.ok ? await res.json() : null;
-  }
-  // --------------------------------------------------------------------------
-
-  // [TEMP] mock: auto-fetch rides list (would hit backend later)
+  /**
+   * Fetch user's rides on component mount and when user changes
+   * Only fetch if user is authenticated - don't show errors on initial load
+   */
   useEffect(() => {
-    setTrips([
-      { id: 1, date: "Fri Oct 13 7:30 AM", seats: 2, rating: 4.8, price: 9.0 },
-      { id: 2, date: "Fri Oct 13 8:00 AM", seats: 4, rating: 4.9, price: 10.0 },
-    ]);
-  }, []);
+    if (isAuthenticated && user && !hasInitialLoad) {
+      setHasInitialLoad(true);
+      
+      // Fetch user's rides in silent mode (won't set error state)
+      // This prevents "Not Found" errors from showing on initial page load
+      fetchMyRides(undefined, true);
+    }
+  }, [isAuthenticated, user, hasInitialLoad, fetchMyRides]);
 
-  // [TEST] simple fake geocoder using random nearby coords
+  /**
+   * TODO: Replace with actual geocoding service
+   * This is a temporary placeholder that generates random coordinates
+   * In production, integrate with a real geocoding API (e.g., Google Maps, Mapbox, OpenStreetMap Nominatim)
+   */
   function fakeGeocode(address: string): [number, number] {
-    const base = address.toLowerCase().includes("kitchener")
-      ? [43.45, -80.49]
-      : [43.47, -80.54];
-    return [base[0] + Math.random() * 0.01, base[1] + Math.random() * 0.01];
+    // Generate deterministic "random" coordinates based on address hash
+    // This is just for demo purposes - DO NOT use in production
+    const hash = address.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const lat = 43.0 + (hash % 100) * 0.01;
+    const lng = -80.0 - (hash % 100) * 0.01;
+    return [lat, lng];
   }
 
-  // update coordinates when from/to change
+  /**
+   * Update map coordinates when origin/destination change
+   */
   useEffect(() => {
     if (form.from && form.to) {
       const start = fakeGeocode(form.from);
       const end = fakeGeocode(form.to);
       setCoords([start, end]);
+    } else {
+      setCoords([]);
     }
   }, [form.from, form.to]);
 
+  /**
+   * Clear confirmation message after 5 seconds
+   */
+  useEffect(() => {
+    if (confirmation) {
+      const timer = setTimeout(() => setConfirmation(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmation]);
+
+  /**
+   * Handle form input changes
+   */
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  /**
+   * Convert form data to API format
+   */
+  const formToRideData = (formData: RideFormData): RideCreateData => {
+    // TODO: Replace fake geocoding with real coordinates from map integration
+    const originCoords = formData.from ? fakeGeocode(formData.from) : null;
+    const destCoords = formData.to ? fakeGeocode(formData.to) : null;
+
+    const rideData: RideCreateData = {
+      ride_type: mode === "driver" ? "offer" : "request",
+      origin_label: formData.from,
+      destination_label: formData.to,
+      origin_lat: originCoords?.[0],
+      origin_lng: originCoords?.[1],
+      destination_lat: destCoords?.[0],
+      destination_lng: destCoords?.[1],
+      departure_time: new Date(formData.date).toISOString(),
+      seats_total: formData.seats,
+      price_share: formData.cost,
+      notes: formData.note || undefined,
+    };
+
+    // Add vehicle info only for driver mode (offers)
+    if (mode === "driver") {
+      rideData.vehicle_make = formData.vehicle_make || undefined;
+      rideData.vehicle_model = formData.vehicle_model || undefined;
+      rideData.vehicle_color = formData.vehicle_color || undefined;
+      rideData.vehicle_year = formData.vehicle_year || undefined;
+    }
+
+    return rideData;
+  };
+
+  /**
+   * Handle form submission - create new ride
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ride = await postRide(form);
-    setConfirmation(
-      `✅ ${
-        form.mode === "driver" ? "Ride posted" : "Request sent"
-      } successfully!`
-    );
-    await getRide(ride.id);
-    setForm({ ...form, from: "", to: "", date: "", note: "" });
+    setIsSubmitting(true);
+    clearError();
+
+    try {
+      const rideData = formToRideData(form);
+      const newRide = await createRide(rideData);
+
+      if (newRide) {
+        setConfirmation(
+          `✅ ${mode === "driver" ? "Ride posted" : "Request sent"} successfully!`
+        );
+        
+        // Reset form
+        setForm({
+          from: "",
+          to: "",
+          date: "",
+          seats: 1,
+          cost: 0,
+          note: "",
+          vehicle_make: "",
+          vehicle_model: "",
+          vehicle_color: "",
+          vehicle_year: undefined,
+        });
+        
+        // No need to call fetchMyRides() - createRide already updates local state
+      }
+    } catch (err) {
+      console.error("Error creating ride:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  /**
+   * Start editing a ride
+   */
+  const handleEditRide = (ride: Ride) => {
+    // Convert ride data back to form format
+    const editData: RideFormData = {
+      from: ride.origin_label || "",
+      to: ride.destination_label || "",
+      date: new Date(ride.departure_time).toISOString().slice(0, 16), // Format for datetime-local input
+      seats: ride.seats_total,
+      cost: ride.price_share,
+      note: ride.notes || "",
+      vehicle_make: ride.vehicle_make || "",
+      vehicle_model: ride.vehicle_model || "",
+      vehicle_color: ride.vehicle_color || "",
+      vehicle_year: ride.vehicle_year || undefined,
+    };
+
+    setEditingRide({ id: ride.id, data: editData });
+    
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /**
+   * Cancel editing
+   */
+  const handleCancelEdit = () => {
+    setEditingRide(null);
+  };
+
+  /**
+   * Submit edited ride
+   */
+  const handleUpdateRide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRide) return;
+
+    setIsSubmitting(true);
+    clearError();
+
+    try {
+      const updateData = {
+        origin_label: editingRide.data.from,
+        destination_label: editingRide.data.to,
+        departure_time: new Date(editingRide.data.date).toISOString(),
+        seats_total: editingRide.data.seats,
+        price_share: editingRide.data.cost,
+        notes: editingRide.data.note || undefined,
+        vehicle_make: editingRide.data.vehicle_make || undefined,
+        vehicle_model: editingRide.data.vehicle_model || undefined,
+        vehicle_color: editingRide.data.vehicle_color || undefined,
+        vehicle_year: editingRide.data.vehicle_year || undefined,
+      };
+
+      const updated = await updateRide(editingRide.id, updateData);
+
+      if (updated) {
+        setConfirmation("✅ Ride updated successfully!");
+        setEditingRide(null);
+        // No need to call fetchMyRides() - updateRide already updates local state
+      }
+    } catch (err) {
+      console.error("Error updating ride:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Delete a ride
+   */
+  const handleDeleteRide = async (rideId: string) => {
+    if (!window.confirm("Are you sure you want to delete this ride?")) {
+      return;
+    }
+
+    const success = await deleteRide(rideId);
+    if (success) {
+      setConfirmation("✅ Ride deleted successfully!");
+      // No need to call fetchMyRides() - deleteRide already updates local state
+    }
+  };
+
+  /**
+   * Handle edit form changes
+   */
+  const handleEditChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    if (!editingRide) return;
+    
+    const { name, value } = e.target;
+    setEditingRide({
+      ...editingRide,
+      data: { ...editingRide.data, [name]: value }
+    });
+  };
+
+  /**
+   * Get user's rides filtered by mode
+   */
+  const getUserRides = () => {
+    if (!user) return [];
+    
+    return rides.filter(ride => {
+      const isRequest = ride.ride_type === "request" || ride.status === "requested";
+      return mode === "rider" ? isRequest : !isRequest;
+    });
+  };
+
+  const userRides = getUserRides();
+  const currentFormData = editingRide ? editingRide.data : form;
+  const isEditing = !!editingRide;
 
   return (
     <div className="flex flex-col" style={{ minHeight: 'calc(100vh - 80px)', backgroundColor: 'var(--color-background-warm)' }}>
@@ -114,7 +351,10 @@ export default function RidePostAndRequestPage() {
         <div className="inline-flex rounded-lg overflow-hidden shadow-sm" style={{ border: '1px solid var(--color-secondary)' }}>
           <motion.button
             type="button"
-            onClick={() => setMode("rider")}
+            onClick={() => {
+              setMode("rider");
+              setEditingRide(null);
+            }}
             className="px-6 py-2 font-medium border-r transition-all flex items-center gap-2"
             style={{
               backgroundColor: mode === "rider" ? 'var(--color-primary)' : 'white',
@@ -129,7 +369,10 @@ export default function RidePostAndRequestPage() {
           </motion.button>
           <motion.button
             type="button"
-            onClick={() => setMode("driver")}
+            onClick={() => {
+              setMode("driver");
+              setEditingRide(null);
+            }}
             className="px-6 py-2 font-medium transition-all flex items-center gap-2"
             style={{
               backgroundColor: mode === "driver" ? 'var(--color-primary)' : 'white',
@@ -144,20 +387,52 @@ export default function RidePostAndRequestPage() {
         </div>
       </motion.div>
 
+      {/* Error Display */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            className="mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <AlertCircle size={20} className="text-red-600 shrink-0" />
+            <p className="text-sm text-red-800">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Form */}
       <motion.form
-        onSubmit={handleSubmit}
+        onSubmit={isEditing ? handleUpdateRide : handleSubmit}
         className="p-4 bg-white shadow-sm space-y-3 mt-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
+        {isEditing && (
+          <div className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm font-medium text-blue-800 flex items-center gap-2">
+              <Edit2 size={16} />
+              Editing ride
+            </p>
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
+              <XCircle size={16} />
+              Cancel
+            </button>
+          </div>
+        )}
+
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-accent)' }} />
           <input
             name="from"
-            value={form.from}
-            onChange={handleChange}
+            value={currentFormData.from}
+            onChange={isEditing ? handleEditChange : handleChange}
             placeholder="Departure location"
             className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
             style={{ 
@@ -171,8 +446,8 @@ export default function RidePostAndRequestPage() {
           <MapPinned className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-primary)' }} />
           <input
             name="to"
-            value={form.to}
-            onChange={handleChange}
+            value={currentFormData.to}
+            onChange={isEditing ? handleEditChange : handleChange}
             placeholder="Destination"
             className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
             style={{ 
@@ -187,8 +462,45 @@ export default function RidePostAndRequestPage() {
           <input
             type="datetime-local"
             name="date"
-            value={form.date}
-            onChange={handleChange}
+            value={currentFormData.date}
+            onChange={isEditing ? handleEditChange : handleChange}
+            className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
+            style={{ 
+              border: '1px solid var(--color-secondary)'
+            }}
+            required
+          />
+        </div>
+        
+        <div className="relative">
+          <Users className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-primary)' }} />
+          <input
+            type="number"
+            name="seats"
+            value={currentFormData.seats}
+            min={1}
+            max={10}
+            onChange={isEditing ? handleEditChange : handleChange}
+            placeholder={mode === "rider" ? "Number of seats needed" : "Available seats"}
+            className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
+            style={{ 
+              border: '1px solid var(--color-secondary)'
+            }}
+            required
+          />
+        </div>
+        
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-accent)' }} />
+          <input
+            type="number"
+            step="0.01"
+            name="cost"
+            value={currentFormData.cost}
+            min={0}
+            max={9999.99}
+            onChange={isEditing ? handleEditChange : handleChange}
+            placeholder={mode === "rider" ? "Budget per seat ($)" : "Cost per passenger ($)"}
             className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
             style={{ 
               border: '1px solid var(--color-secondary)'
@@ -206,36 +518,64 @@ export default function RidePostAndRequestPage() {
             className="space-y-3"
           >
             <div className="relative">
-              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-primary)' }} />
+              <Car className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-primary)' }} />
               <input
-                type="number"
-                name="seats"
-                value={form.seats}
-                min={1}
-                onChange={handleChange}
-                placeholder="Available seats"
+                type="text"
+                name="vehicle_make"
+                value={currentFormData.vehicle_make}
+                onChange={isEditing ? handleEditChange : handleChange}
+                placeholder="Vehicle make (e.g., Toyota)"
                 className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
                 style={{ 
                   border: '1px solid var(--color-secondary)'
                 }}
-                required
               />
             </div>
             
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-accent)' }} />
+              <Car className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-primary)' }} />
               <input
-                type="number"
-                step="0.01"
-                name="cost"
-                value={form.cost}
-                onChange={handleChange}
-                placeholder="Cost per passenger ($)"
+                type="text"
+                name="vehicle_model"
+                value={currentFormData.vehicle_model}
+                onChange={isEditing ? handleEditChange : handleChange}
+                placeholder="Vehicle model (e.g., Camry)"
                 className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
                 style={{ 
                   border: '1px solid var(--color-secondary)'
                 }}
-                required
+              />
+            </div>
+            
+            <div className="relative">
+              <Car className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-primary)' }} />
+              <input
+                type="text"
+                name="vehicle_color"
+                value={currentFormData.vehicle_color}
+                onChange={isEditing ? handleEditChange : handleChange}
+                placeholder="Vehicle color"
+                className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
+                style={{ 
+                  border: '1px solid var(--color-secondary)'
+                }}
+              />
+            </div>
+            
+            <div className="relative">
+              <Car className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: 'var(--color-primary)' }} />
+              <input
+                type="number"
+                name="vehicle_year"
+                value={currentFormData.vehicle_year || ''}
+                onChange={isEditing ? handleEditChange : handleChange}
+                placeholder="Vehicle year (e.g., 2020)"
+                min={1900}
+                max={new Date().getFullYear() + 1}
+                className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
+                style={{ 
+                  border: '1px solid var(--color-secondary)'
+                }}
               />
             </div>
           </motion.div>
@@ -245,9 +585,11 @@ export default function RidePostAndRequestPage() {
           <MessageSquare className="absolute left-3 top-3" size={18} style={{ color: 'var(--color-accent)' }} />
           <textarea
             name="note"
-            value={form.note}
-            onChange={handleChange}
+            value={currentFormData.note}
+            onChange={isEditing ? handleEditChange : handleChange}
             placeholder="Notes or preferences"
+            maxLength={500}
+            rows={3}
             className="w-full rounded-md p-2 pl-10 focus:outline-none focus:ring-2"
             style={{ 
               border: '1px solid var(--color-secondary)'
@@ -257,13 +599,23 @@ export default function RidePostAndRequestPage() {
         
         <motion.button
           type="submit"
-          className="w-full text-white py-2 rounded-md font-semibold transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
+          disabled={isSubmitting}
+          className="w-full text-white py-2 rounded-md font-semibold transition-opacity hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: 'var(--color-primary)' }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+          whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
         >
-          {mode === "rider" ? "Request Ride" : "Post Ride"}
-          <ArrowRight size={18} />
+          {isSubmitting ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              {isEditing ? "Updating..." : "Posting..."}
+            </>
+          ) : (
+            <>
+              {isEditing ? "Update Ride" : (mode === "rider" ? "Request Ride" : "Post Ride")}
+              <ArrowRight size={18} />
+            </>
+          )}
         </motion.button>
         
         <AnimatePresence>
@@ -282,231 +634,210 @@ export default function RidePostAndRequestPage() {
         </AnimatePresence>
       </motion.form>
 
-      {/* Rider Mode: Map + Available Trips */}
-      {mode === "rider" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Map preview */}
-          <div className="p-4">
-            <motion.h3 
-              className="text-sm font-semibold mb-2 flex items-center gap-2" 
-              style={{ color: 'var(--color-primary)' }}
-              initial={{ x: -20 }}
-              animate={{ x: 0 }}
-            >
-              <MapPinned size={18} />
-              Route Preview
-            </motion.h3>
-            <motion.div 
-              className="rounded-lg overflow-hidden h-64" 
-              style={{ border: '2px solid var(--color-secondary)' }}
-              whileHover={{ scale: 1.01 }}
-              transition={{ duration: 0.2 }}
-            >
-              <MapContainer
-                bounds={[[43.47, -80.53]]}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  {...({
-                    attribution:
-                      '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-                    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                  } as any)}
-                />
-                {coords.length === 2 && (
-                  <>
-                    <Marker position={coords[0]} />
-                    <Marker position={coords[1]} />
-                    <Polyline
-                      positions={coords}
-                      pathOptions={{ color: "#fc4a1a" }}
-                    />
-                  </>
-                )}
-              </MapContainer>
-            </motion.div>
-          </div>
-
-          {/* Trip list */}
-          <div className="p-4 space-y-3">
-            <p className="text-sm flex items-center gap-2" style={{ color: '#4a5568' }}>
-              <Clock size={16} style={{ color: 'var(--color-accent)' }} />
-              Trips available from {form.from || "Waterloo"} to{" "}
-              {form.to || "Kitchener"}:
-            </p>
-            {trips.map((t, index) => (
-              <motion.div
-                key={t.id}
-                className="flex justify-between items-center rounded-lg p-3 bg-white shadow-sm cursor-pointer"
-                style={{ border: '1px solid var(--color-secondary)' }}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ 
-                  scale: 1.02,
-                  boxShadow: '0 4px 12px rgba(252, 74, 26, 0.15)',
-                  borderColor: 'var(--color-primary)'
-                }}
-              >
-                <div>
-                  <p className="font-semibold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                    <Calendar size={16} />
-                    {t.date}
-                  </p>
-                  <p className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
-                    <Users size={14} />
-                    Seats: {t.seats} | 
-                    <Star size={14} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
-                    Rating: {t.rating}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
-                    <DollarSign size={16} />
-                    {t.price.toFixed(2)}
-                  </p>
-                  <p className="text-xs" style={{ color: '#718096' }}>
-                    Cash or digital payment
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Driver Mode: Summary + Previous Trips */}
-      {mode === "driver" && (
-        <motion.div 
-          className="p-4 space-y-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Monthly Summary */}
+      {/* Map Preview */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="p-4">
           <motion.h3 
-            className="text-lg font-semibold mt-4 flex items-center gap-2" 
+            className="text-sm font-semibold mb-2 flex items-center gap-2" 
             style={{ color: 'var(--color-primary)' }}
             initial={{ x: -20 }}
             animate={{ x: 0 }}
           >
-            <TrendingUp size={20} />
-            Monthly Summary:
+            <MapPinned size={18} />
+            Route Preview
           </motion.h3>
-          
           <motion.div 
-            className="grid grid-cols-2 gap-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            className="rounded-lg overflow-hidden h-64" 
+            style={{ border: '2px solid var(--color-secondary)' }}
+            whileHover={{ scale: 1.01 }}
+            transition={{ duration: 0.2 }}
           >
-            <motion.div 
-              className="p-3 rounded-lg" 
-              style={{ backgroundColor: 'var(--color-background-cool)' }}
-              whileHover={{ scale: 1.05, backgroundColor: 'rgba(59, 189, 202, 0.1)' }}
+            <MapContainer
+              bounds={coords.length === 2 ? coords : [[43.4, -80.6], [43.5, -80.4]]}
+              style={{ height: "100%", width: "100%" }}
             >
-              <p className="text-xs" style={{ color: '#718096' }}>Trips given</p>
-              <p className="text-2xl font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
-                <Car size={20} />
-                11
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="p-3 rounded-lg" 
-              style={{ backgroundColor: 'var(--color-background-cool)' }}
-              whileHover={{ scale: 1.05, backgroundColor: 'rgba(59, 189, 202, 0.1)' }}
-            >
-              <p className="text-xs" style={{ color: '#718096' }}>Total earned</p>
-              <p className="text-2xl font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
-                <DollarSign size={20} />
-                104.50
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="p-3 rounded-lg" 
-              style={{ backgroundColor: 'var(--color-background-cool)' }}
-              whileHover={{ scale: 1.05, backgroundColor: 'rgba(59, 189, 202, 0.1)' }}
-            >
-              <p className="text-xs" style={{ color: '#718096' }}>Total Distance</p>
-              <p className="text-2xl font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
-                <MapPin size={20} />
-                64.9 km
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="p-3 rounded-lg" 
-              style={{ backgroundColor: 'var(--color-background-cool)' }}
-              whileHover={{ scale: 1.05, backgroundColor: 'rgba(59, 189, 202, 0.1)' }}
-            >
-              <p className="text-xs" style={{ color: '#718096' }}>Average Rating</p>
-              <p className="text-2xl font-bold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
-                <Star size={20} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
-                4.8
-              </p>
-            </motion.div>
+              <TileLayer
+                {...({
+                  attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+                  url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                } as any)}
+              />
+              {coords.length === 2 && (
+                <>
+                  <Marker position={coords[0]} />
+                  <Marker position={coords[1]} />
+                  <Polyline
+                    positions={coords}
+                    pathOptions={{ color: "#fc4a1a" }}
+                  />
+                </>
+              )}
+            </MapContainer>
           </motion.div>
+        </div>
 
-          {/* Previous Trips */}
-          <motion.h3 
-            className="text-lg font-semibold mt-4 flex items-center gap-2" 
-            style={{ color: 'var(--color-primary)' }}
-            initial={{ x: -20 }}
-            animate={{ x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
+        {/* Current User's Rides/Requests */}
+        <div className="p-4 space-y-3">
+          <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
             <Clock size={20} />
-            Previous Trips:
-          </motion.h3>
+            {mode === "rider" ? "Your Ride Requests" : "Your Posted Rides"}
+          </h3>
           
-          {[
-            { id: 1, date: "Fri, Sept 30, 7:30 AM", passengers: 1, price: 9.0 },
-            { id: 2, date: "Thu, Sept 29, 6:00 PM", passengers: 2, price: 18.0 },
-            { id: 3, date: "Mon, Sept 26, 8:00 AM", passengers: 1, price: 7.5 },
-            { id: 4, date: "Sat, Sept 24, 12:00 PM", passengers: 1, price: 11.5 },
-          ].map((trip, index) => (
+          {!isAuthenticated ? (
             <motion.div
-              key={trip.id}
-              className="flex justify-between rounded-lg p-3 bg-white shadow-sm cursor-pointer"
-              style={{ border: '1px solid var(--color-secondary)' }}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 + index * 0.1 }}
-              whileHover={{ 
-                scale: 1.02,
-                boxShadow: '0 4px 12px rgba(252, 74, 26, 0.15)',
-                borderColor: 'var(--color-primary)'
-              }}
+              className="flex flex-col items-center justify-center py-8 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
             >
-              <div>
-                <p className="font-semibold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                  <Calendar size={16} />
-                  {trip.date}
-                </p>
-                <p className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
-                  <Users size={14} />
-                  Passengers: {trip.passengers} | 
-                  <CheckCircle2 size={14} style={{ color: 'var(--color-accent)' }} />
-                  Rating feedback: 👍
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold flex items-center gap-1 justify-end" style={{ color: 'var(--color-primary)' }}>
-                  <DollarSign size={16} />
-                  {trip.price.toFixed(2)}
-                </p>
-                <p className="text-xs" style={{ color: '#718096' }}>(Cash payment only)</p>
-              </div>
+              <UserCircle size={48} style={{ color: 'var(--color-secondary)', marginBottom: '1rem' }} />
+              <p className="text-sm" style={{ color: '#718096' }}>
+                Please log in to view and manage your rides.
+              </p>
             </motion.div>
-          ))}
-        </motion.div>
-      )}
+          ) : isLoading ? (
+            <motion.div
+              className="flex flex-col items-center justify-center py-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <Loader2 size={48} style={{ color: 'var(--color-primary)' }} className="animate-spin" />
+              <p className="text-sm mt-4" style={{ color: '#718096' }}>
+                Loading your rides...
+              </p>
+            </motion.div>
+          ) : userRides.length === 0 ? (
+            <motion.div
+              className="flex flex-col items-center justify-center py-8 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <Car size={48} style={{ color: 'var(--color-secondary)', marginBottom: '1rem' }} />
+              <p className="text-sm" style={{ color: '#718096' }}>
+                {mode === "rider" 
+                  ? "You haven't requested any rides yet. Create a request above!" 
+                  : "You haven't posted any rides yet. Post a ride above!"}
+              </p>
+            </motion.div>
+          ) : (
+            <div className="space-y-3">
+              {userRides.map((ride, index) => (
+                <motion.div
+                  key={ride.id}
+                  className="rounded-lg p-4 bg-white shadow-sm"
+                  style={{ border: '1px solid var(--color-secondary)' }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ 
+                    scale: 1.01,
+                    boxShadow: '0 4px 12px rgba(252, 74, 26, 0.15)',
+                  }}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin size={16} style={{ color: 'var(--color-accent)' }} />
+                        <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>
+                          {ride.origin_label} → {ride.destination_label}
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm" style={{ color: '#718096' }}>
+                        <span className="flex items-center gap-1">
+                          <Calendar size={14} />
+                          {new Date(ride.departure_time).toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users size={14} />
+                          {ride.seats_available}/{ride.seats_total} seats
+                        </span>
+                        <span className="flex items-center gap-1 font-semibold" style={{ color: 'var(--color-primary)' }}>
+                          <DollarSign size={14} />
+                          ${ride.price_share.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {mode === "driver" && ride.vehicle_make && (
+                        <div className="flex items-center gap-1 text-sm mt-2" style={{ color: '#718096' }}>
+                          <Car size={14} />
+                          {ride.vehicle_year} {ride.vehicle_make} {ride.vehicle_model}
+                          {ride.vehicle_color && ` - ${ride.vehicle_color}`}
+                        </div>
+                      )}
+
+                      {ride.notes && (
+                        <div className="mt-2 text-sm p-2 rounded" style={{ backgroundColor: '#f7fafc', color: '#4a5568' }}>
+                          <MessageSquare size={12} className="inline mr-1" />
+                          {ride.notes}
+                        </div>
+                      )}
+
+                      <div className="mt-2">
+                        <span 
+                          className="text-xs px-2 py-1 rounded"
+                          style={{
+                            backgroundColor: 
+                              ride.status === 'open' ? '#d4edda' :
+                              ride.status === 'requested' ? '#fff3cd' :
+                              ride.status === 'cancelled' ? '#f8d7da' :
+                              ride.status === 'completed' ? '#d1ecf1' :
+                              '#e2e8f0',
+                            color:
+                              ride.status === 'open' ? '#155724' :
+                              ride.status === 'requested' ? '#856404' :
+                              ride.status === 'cancelled' ? '#721c24' :
+                              ride.status === 'completed' ? '#0c5460' :
+                              '#4a5568'
+                          }}
+                        >
+                          {ride.status.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {ride.status !== 'completed' && ride.status !== 'cancelled' && (
+                      <div className="flex gap-2 ml-4">
+                        <motion.button
+                          onClick={() => handleEditRide(ride)}
+                          className="p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                          style={{ color: 'var(--color-primary)' }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          title="Edit ride"
+                        >
+                          <Edit2 size={18} />
+                        </motion.button>
+                        <motion.button
+                          onClick={() => handleDeleteRide(ride.id)}
+                          className="p-2 rounded-lg hover:bg-red-50 transition-colors text-red-600"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          title="Delete ride"
+                        >
+                          <Trash2 size={18} />
+                        </motion.button>
+                      </div>
+                    )}
+                  </div>
+
+                  {ride.driver && ride.driver.rating_count > 0 && (
+                    <div className="flex items-center gap-2 text-sm pt-3 border-t" style={{ borderColor: 'var(--color-secondary)', color: '#718096' }}>
+                      <Star size={14} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
+                      Rating: {ride.driver.rating_avg.toFixed(1)} ({ride.driver.rating_count} reviews)
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
       </div>
     </div>
   );
