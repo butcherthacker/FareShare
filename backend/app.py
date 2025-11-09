@@ -2,6 +2,10 @@
 FareShare API - Main Application
 FastAPI application entry point with health checks and database connectivity.
 """
+
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file at startup
+
 from datetime import datetime
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +18,7 @@ from sqlalchemy import text, select
 from src.config.db import init_db, close_db, get_async_session
 from src.models import User, Ride, Booking, Review
 from src.routes import auth_router, users_router, rides_router
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

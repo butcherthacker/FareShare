@@ -16,7 +16,11 @@ shapely  # Python library for manipulation and analysis of geometric objects
 # Authentication and security
 python-jose[cryptography]  # For JWT tokens
 passlib[bcrypt]  # Password hashing
+bcrypt  # Bcrypt hashing algorithm
 python-multipart  # Form data handling
+fastapi-mail  # Email system for verification emails
+email-validator  # For email validation
+
 
 # Environment variables
 python-dotenv
@@ -37,6 +41,5 @@ pytest-asyncio
 # Optional but recommended
 redis  # For caching and message broker
 celery  # For background tasks
-email-validator  # For email validation
 phonenumbers  # For phone number validation
 python-dateutil  # Extended datetime functionality
