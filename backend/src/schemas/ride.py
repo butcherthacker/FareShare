@@ -4,7 +4,7 @@ Pydantic models for ride posting, requesting, and retrieval endpoints.
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator, Field
 from enum import Enum
 from decimal import Decimal
 
@@ -350,6 +350,41 @@ class RideResponse(BaseModel):
 class RideListResponse(BaseModel):
     """Schema for paginated list of rides"""
     rides: list[RideResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+# ===== SEARCH RESPONSE SCHEMAS =====
+
+class RideSearchItem(BaseModel):
+    """Simplified ride info returned by the search endpoint"""
+    id: str
+    from_label: Optional[str] = Field(None, alias="from")
+    to_label: Optional[str] = Field(None, alias="to")
+    depart_at: datetime
+    seats_available: int
+    price: float
+    driver_rating: Optional[float] = None
+    ride_type: str
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
+
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if v is not None and not isinstance(v, str):
+            return str(v)
+        return v
+
+
+class RideSearchResponse(BaseModel):
+    """Paginated response for ride search endpoint"""
+    rides: list[RideSearchItem]
     total: int
     page: int
     page_size: int

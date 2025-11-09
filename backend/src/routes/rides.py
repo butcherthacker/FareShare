@@ -9,7 +9,7 @@ Endpoints:
 - PATCH /rides/{id} - Update ride information
 - DELETE /rides/{id} - Cancel/delete a ride
 """
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, func, or_, and_, cast
@@ -29,7 +29,9 @@ from src.schemas.ride import (
     RideStatusUpdate,
     RideType,
     RideStatus,
-    DriverInfo
+    DriverInfo,
+    RideSearchResponse,
+    RideSearchItem
 )
 from src.auth import get_current_active_user
 
@@ -224,6 +226,101 @@ async def create_ride(
     ride_dict.update(coords)
     
     return RideResponse(**ride_dict)
+
+
+# ===== RIDE SEARCH (LIGHTWEIGHT) =====
+
+
+@router.get("/search", response_model=RideSearchResponse)
+async def search_rides(
+    origin: Optional[str] = Query(None, description="Origin text to search"),
+    destination: Optional[str] = Query(None, description="Destination text to search"),
+    date: Optional[str] = Query(None, description="Travel date (YYYY-MM-DD)"),
+    seats: Optional[int] = Query(None, ge=1, description="Minimum seats needed"),
+    max_price: Optional[float] = Query(None, ge=0, description="Maximum price per seat"),
+    page: int = Query(1, ge=1, description="Page number (starts at 1)"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Search rides using lightweight filters for the Ride Search page."""
+    page_size = 3
+
+    filters = [~Ride.status.in_(["cancelled", "completed"])]
+
+    if origin:
+        filters.append(Ride.origin_label.ilike(f"%{origin}%"))
+
+    if destination:
+        filters.append(Ride.destination_label.ilike(f"%{destination}%"))
+
+    if seats is not None:
+        filters.append(Ride.seats_available >= seats)
+
+    if max_price is not None:
+        filters.append(Ride.price_share <= max_price)
+
+    if date:
+        try:
+            travel_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format. Use YYYY-MM-DD."
+            )
+
+        start_dt = datetime.combine(travel_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        end_dt = start_dt + timedelta(days=1)
+        filters.append(and_(Ride.departure_time >= start_dt, Ride.departure_time < end_dt))
+
+    query = select(Ride, User).join(User, Ride.driver_id == User.id, isouter=True)
+    count_query = select(func.count()).select_from(Ride).join(User, Ride.driver_id == User.id, isouter=True)
+
+    if filters:
+        filter_clause = and_(*filters)
+        query = query.where(filter_clause)
+        count_query = count_query.where(filter_clause)
+
+    query = query.order_by(Ride.departure_time.asc())
+
+    offset = (page - 1) * page_size
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    result = await db.execute(query.offset(offset).limit(page_size))
+    rows = result.all()
+
+    rides_data: list[RideSearchItem] = []
+    for ride, driver in rows:
+        driver_rating = None
+        if driver and driver.rating_count and driver.rating_count > 0:
+            driver_rating = float(driver.rating_avg)
+
+        ride_type = "request" if ride.status == "requested" else "offer"
+
+        rides_data.append(
+            RideSearchItem.model_validate(
+                {
+                    "id": str(ride.id),
+                    "from": ride.origin_label,
+                    "to": ride.destination_label,
+                    "depart_at": ride.departure_time,
+                    "seats_available": ride.seats_available,
+                    "price": float(ride.price_share),
+                    "driver_rating": driver_rating,
+                    "ride_type": ride_type,
+                }
+            )
+        )
+
+    total_pages = max(1, math.ceil(total / page_size)) if total else 1
+
+    return RideSearchResponse(
+        rides=rides_data,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages
+    )
 
 
 # ===== GET SINGLE RIDE =====

@@ -70,7 +70,8 @@ export default function RidePostAndRequestPage() {
         if (maxPrice !== "") params.append("max_price", String(maxPrice));
         params.append("page", String(page));
 
-        const url = (import.meta.env.VITE_API_BASE_URL ?? "") + "/rides/search?" + params.toString();
+        const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api").replace(/\/$/, "");
+        const url = `${baseUrl}/rides/search?${params.toString()}`;
 
         const resp = await fetch(url, { signal: controller.signal });
         if (!resp.ok) {
@@ -80,27 +81,22 @@ export default function RidePostAndRequestPage() {
 
         const data = await resp.json().catch(() => null);
 
-        // If backend not implemented, allow a graceful placeholder
-        if (!data || !data.rides) {
-          // placeholder/mock data for UI purposes
-          const mock: Ride[] = Array.from({ length: 3 }).map((_, i) => ({
-            id: `mock-${page}-${i}`,
-            from: origin || "75 University Ave. W, Waterloo",
-            to: destination || "200 King St. W, Kitchener",
-            depart_at: new Date(Date.now() + (i + 1) * 3600 * 1000).toISOString(),
-            seats_available: 3 - i,
-            price: 7 + i * 1.5,
-            driver_rating: 4.5 - i * 0.2,
-          }));
-          if (!cancelled) {
-            setResults(mock);
-            setTotalPages(3);
-          }
-        } else {
-          if (!cancelled) {
-            setResults(data.rides || []);
-            setTotalPages(data.total_pages || 1);
-          }
+        if (!cancelled) {
+          const rides = Array.isArray(data?.rides)
+            ? data.rides.map((item: any) => ({
+                id: item.id,
+                from: item.from ?? item.origin_label ?? "",
+                to: item.to ?? item.destination_label ?? "",
+                depart_at: item.depart_at ?? item.departure_time,
+                seats_available: item.seats_available ?? item.seats ?? 0,
+                price: item.price ?? item.price_share ?? 0,
+                driver_rating: item.driver_rating ?? item.driver?.rating_avg ?? undefined,
+              }))
+            : [];
+
+          setResults(rides);
+          const incomingTotal = typeof data?.total_pages === "number" ? data.total_pages : 1;
+          setTotalPages(incomingTotal > 0 ? incomingTotal : 1);
         }
       } catch (err: any) {
         if (!cancelled) setError(err.message || "Search failed");
