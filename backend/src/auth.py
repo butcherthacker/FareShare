@@ -1,6 +1,6 @@
 """
 Authentication & Security Utilities
-Handles JWT tokens, password hashing, and authentication dependencies for FastAPI routes.
+Handles JWT tokens, password hashing, email verification, and authentication dependencies for FastAPI routes.
 """
 import os
 from datetime import datetime, timedelta, timezone
@@ -17,8 +17,9 @@ from src.models.user import User
 
 # Security configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")  # Change in production!
-ALGORITHM = "HS256"
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
+VERIFICATION_TOKEN_EXPIRE_HOURS = int(os.getenv("VERIFICATION_TOKEN_EXPIRE_HOURS", 24))
 
 # HTTP Bearer token scheme
 security = HTTPBearer()
@@ -85,17 +86,83 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     
     # Set expiration time
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
     
     # Create and return JWT token
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
+def create_verification_token(user_id: str, email: str) -> str:
+    """
+    Create a JWT token specifically for email verification.
+    
+    Args:
+        user_id: User's UUID as string
+        email: User's email address
+        
+    Returns:
+        str: JWT verification token
+    """
+    verification_expires = timedelta(hours=VERIFICATION_TOKEN_EXPIRE_HOURS)
+    return create_access_token(
+        data={
+            "sub": str(user_id),
+            "email": email,
+            "type": "email_verification"
+        },
+        expires_delta=verification_expires
+    )
+
+
+def decode_verification_token(token: str) -> dict:
+    """
+    Decode and validate an email verification token.
+    
+    Args:
+        token: JWT verification token
+        
+    Returns:
+        dict: Decoded payload with user_id and email
+        
+    Raises:
+        HTTPException: If token is invalid, expired, or wrong type
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        # Verify it's a verification token
+        if payload.get("type") != "email_verification":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token type"
+            )
+        
+        user_id: str = payload.get("sub")
+        email: str = payload.get("email")
+        
+        if user_id is None or email is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token payload"
+            )
+        
+        return {"user_id": user_id, "email": email}
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification token has expired"
+        )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification token"
+        )
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
