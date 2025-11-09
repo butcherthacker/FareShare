@@ -13,7 +13,7 @@ from sqlalchemy import text, select
 
 from src.config.db import init_db, close_db, get_async_session
 from src.models import User, Ride, Booking, Review
-from src.routes import auth_router, users_router, rides_router
+from src.routes import auth_router, users_router, rides_router, trip_summary # Trip summary routes
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -67,6 +67,8 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(rides_router, prefix="/api")
+app.include_router(trip_summary.router, prefix="/api") # Trip summary routes
+
 
 
 @app.get("/", tags=["Root"])
