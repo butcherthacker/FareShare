@@ -137,6 +137,32 @@ export interface RideListResponse {
 }
 
 /**
+ * Lightweight ride shape returned by the search endpoint
+ * This is intentionally smaller than the full `Ride` type
+ */
+export interface SearchResultRide {
+    id: string;
+    from: string | null;
+    to: string | null;
+    depart_at: string; // ISO datetime
+    seats_available: number;
+    price: number;
+    driver_rating?: number | null;
+    ride_type?: string | null;
+}
+
+/**
+ * Response shape for the search endpoint
+ */
+export interface SearchResponse {
+    rides: SearchResultRide[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+}
+
+/**
  * Query parameters for listing/filtering rides
  */
 export interface RideQueryParams {

@@ -20,6 +20,7 @@ import math
 
 from src.config.db import get_db
 from src.models.ride import Ride
+from src.models.booking import Booking
 from src.models.user import User
 from src.schemas.ride import (
     RideCreate, 
@@ -239,10 +240,11 @@ async def search_rides(
     seats: Optional[int] = Query(None, ge=1, description="Minimum seats needed"),
     max_price: Optional[float] = Query(None, ge=0, description="Maximum price per seat"),
     page: int = Query(1, ge=1, description="Page number (starts at 1)"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page for search results"),
     db: AsyncSession = Depends(get_db)
 ):
     """Search rides using lightweight filters for the Ride Search page."""
-    page_size = 3
+    # page_size is provided by query parameter (default 10)
 
     filters = [~Ride.status.in_(["cancelled", "completed"])]
 
@@ -675,6 +677,24 @@ async def update_ride_status(
     
     # Update status
     ride.status = status_update.status.value
+
+    # If marking ride completed or cancelled, propagate status to bookings
+    # so that booking rows reflect final state and earnings can be computed
+    # by looking at booking.status = 'completed'.
+    if status_update.status.value == 'completed':
+        # Mark all bookings for this ride as completed
+        bookings_query = select(Booking).where(Booking.ride_id == ride.id)
+        bookings_result = await db.execute(bookings_query)
+        bookings = bookings_result.scalars().all()
+        for b in bookings:
+            b.status = 'completed'
+    elif status_update.status.value == 'cancelled':
+        # Mark bookings as cancelled when ride cancelled
+        bookings_query = select(Booking).where(Booking.ride_id == ride.id)
+        bookings_result = await db.execute(bookings_query)
+        bookings = bookings_result.scalars().all()
+        for b in bookings:
+            b.status = 'cancelled'
     
     await db.commit()
     await db.refresh(ride)

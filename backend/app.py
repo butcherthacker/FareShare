@@ -72,7 +72,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(rides_router, prefix="/api")
-app.include_router(trip_summary.router, prefix="/api") # Trip summary routes
+app.include_router(trip_summary.router) # Trip summary routes (already has /api/trips prefix)
 
 
 

@@ -217,6 +217,8 @@ import type {
     RideStatusUpdate,
 } from '../types';
 
+import type { SearchResponse } from '../types';
+
 /**
  * Create a new ride offer or request
  * @param data - Ride creation data
@@ -298,4 +300,46 @@ export async function getMyRides(params?: RideQueryParams): Promise<RideListResp
     // TODO: Update this once backend implements a dedicated /rides/my endpoint
     // For now, we'll need to filter client-side by driver_id after fetching
     return listRides(params);
+}
+
+/**
+ * Search rides using lightweight filters (backend: GET /api/rides/search)
+ * Accepts query params similar to backend docs and returns a SearchResponse
+ */
+export async function searchRides(params?: Record<string, any>): Promise<SearchResponse> {
+    const qp = new URLSearchParams();
+    if (params) {
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== "") {
+                qp.append(k, String(v));
+            }
+        });
+    }
+
+    const qs = qp.toString();
+    const endpoint = qs ? `/api/rides/search?${qs}` : '/api/rides/search';
+
+    return apiGet<SearchResponse>(endpoint);
+}
+
+// ===== DASHBOARD / TRIP SUMMARY API FUNCTIONS =====
+
+import type { TripHistoryResponse, DriverSummary } from '../types';
+
+/**
+ * Get trip history for a user (as rider or driver)
+ * @param userId - UUID of the user
+ * @returns Trip history with ride and booking details
+ */
+export async function getTripHistory(userId: string): Promise<TripHistoryResponse> {
+    return apiGet<TripHistoryResponse>(`/api/trips/history/${userId}`);
+}
+
+/**
+ * Get driver summary statistics (total trips, earnings, average per ride)
+ * @param driverId - UUID of the driver
+ * @returns Driver summary statistics
+ */
+export async function getDriverSummary(driverId: string): Promise<DriverSummary> {
+    return apiGet<DriverSummary>(`/api/trips/summary/${driverId}`);
 }
