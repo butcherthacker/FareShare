@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Filter
 } from "lucide-react";
+import { searchRides } from "../utils/api";
 
 type Ride = {
   id: string;
@@ -61,25 +62,17 @@ export default function RidePostAndRequestPage() {
       setLoading(true);
       setError(null);
       try {
-        // Build query string
-        const params = new URLSearchParams();
-        if (origin) params.append("origin", origin);
-        if (destination) params.append("destination", destination);
-        if (date) params.append("date", date);
-        if (seats) params.append("seats", String(seats));
-        if (maxPrice !== "") params.append("max_price", String(maxPrice));
-        params.append("page", String(page));
+        const params: Record<string, any> = {
+          origin: origin || undefined,
+          destination: destination || undefined,
+          date: date || undefined,
+          seats: seats || undefined,
+          max_price: maxPrice === "" ? undefined : maxPrice,
+          page,
+          page_size: 10,
+        };
 
-        const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api").replace(/\/$/, "");
-        const url = `${baseUrl}/rides/search?${params.toString()}`;
-
-        const resp = await fetch(url, { signal: controller.signal });
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          throw new Error(txt || `Server returned ${resp.status}`);
-        }
-
-        const data = await resp.json().catch(() => null);
+        const data = await searchRides(params as any);
 
         if (!cancelled) {
           const rides = Array.isArray(data?.rides)
@@ -223,6 +216,39 @@ export default function RidePostAndRequestPage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          {/* Top pagination (Prev / Next) */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm flex items-center gap-2" style={{ color: '#718096' }}>
+              <Filter size={14} style={{ color: 'var(--color-accent)' }} />
+              Page {page} of {totalPages}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p-1))}
+                disabled={page <= 1}
+                className="px-2 py-1 rounded disabled:opacity-50 transition-opacity hover:opacity-90"
+                style={{
+                  border: '1px solid var(--color-secondary)',
+                  backgroundColor: 'white',
+                  color: 'var(--color-primary)'
+                }}
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p+1))}
+                disabled={page >= totalPages}
+                className="px-2 py-1 rounded disabled:opacity-50 transition-opacity hover:opacity-90"
+                style={{
+                  border: '1px solid var(--color-secondary)',
+                  backgroundColor: 'white',
+                  color: 'var(--color-primary)'
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
           {loading && (
             <div className="p-6 text-center flex items-center justify-center gap-2" style={{ color: 'var(--color-primary)' }}>
               <Loader2 size={20} className="animate-spin" />

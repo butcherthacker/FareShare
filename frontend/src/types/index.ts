@@ -23,6 +23,16 @@ export type {
     RideUpdateData,
     Ride,
     RideListResponse,
+    SearchResultRide,
+    SearchResponse,
     RideQueryParams,
     RideStatusUpdate,
 } from './ride';
+
+export type {
+    TripRole,
+    TripHistoryItem,
+    TripHistoryResponse,
+    DriverSummary,
+    DashboardData,
+} from './dashboard';
