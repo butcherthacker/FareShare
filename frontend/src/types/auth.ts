@@ -63,12 +63,6 @@ export interface User {
     rating_count: number;
     created_at: string; // ISO datetime string
 
-    // Vehicle information (optional - for drivers)
-    vehicle_make: string | null;
-    vehicle_model: string | null;
-    vehicle_year: number | null;
-    vehicle_color: string | null;
-    vehicle_license_plate: string | null;
 }
 
 /**

@@ -137,41 +137,7 @@ class User(Base):
     # ===== DRIVER VEHICLE INFORMATION =====
     # These fields are optional and only used for drivers
     # Passengers don't need to fill these out
-    
-    # Vehicle make (e.g., "Toyota", "Honda", "Ford")
-    vehicle_make = Column(
-        String(50),
-        nullable=True,
-        comment="Vehicle manufacturer (for drivers)"
-    )
-    
-    # Vehicle model (e.g., "Camry", "Civic", "F-150")
-    vehicle_model = Column(
-        String(50),
-        nullable=True,
-        comment="Vehicle model (for drivers)"
-    )
-    
-    # Vehicle year (e.g., 2020, 2018)
-    vehicle_year = Column(
-        Integer,
-        nullable=True,
-        comment="Vehicle year (for drivers)"
-    )
-    
-    # Vehicle color (e.g., "Red", "Blue", "Silver")
-    vehicle_color = Column(
-        String(30),
-        nullable=True,
-        comment="Vehicle color (for drivers)"
-    )
-    
-    # License plate number for identification
-    vehicle_license_plate = Column(
-        String(20),
-        nullable=True,
-        comment="Vehicle license plate (for drivers)"
-    )
+    # Driver vehicle information moved to `rides` table.
     
     # ===== TIMESTAMPS =====
     # When this user account was created
@@ -212,11 +178,6 @@ class User(Base):
         CheckConstraint(
             "rating_count >= 0",
             name="check_rating_count"
-        ),
-        # Vehicle year must be reasonable if provided
-        CheckConstraint(
-            "vehicle_year IS NULL OR (vehicle_year >= 1900 AND vehicle_year <= 2030)",
-            name="check_vehicle_year"
         ),
     )
     

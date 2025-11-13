@@ -78,12 +78,6 @@ class UserResponse(BaseModel):
     rating_count: int
     created_at: datetime
     
-    # Vehicle info for drivers (optional)
-    vehicle_make: Optional[str] = None
-    vehicle_model: Optional[str] = None
-    vehicle_year: Optional[int] = None
-    vehicle_color: Optional[str] = None
-    vehicle_license_plate: Optional[str] = None
     
     # Pydantic v2: enable loading from ORM model attributes and serialize UUIDs as strings
     model_config = {
@@ -108,11 +102,7 @@ class UserProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     
     # Vehicle info (for drivers)
-    vehicle_make: Optional[str] = None
-    vehicle_model: Optional[str] = None
-    vehicle_year: Optional[int] = None
-    vehicle_color: Optional[str] = None
-    vehicle_license_plate: Optional[str] = None
+    # Vehicle information moved to `rides` table; not part of user profile
     
     @field_validator('full_name')
     def validate_full_name(cls, v):
@@ -124,13 +114,6 @@ class UserProfileUpdate(BaseModel):
             return v.strip()
         return v
     
-    @field_validator('vehicle_year')
-    def validate_vehicle_year(cls, v):
-        if v is not None:
-            current_year = datetime.now().year
-            if v < 1900 or v > current_year + 1:
-                raise ValueError(f'Vehicle year must be between 1900 and {current_year + 1}')
-        return v
 
 
 class UserPasswordChange(BaseModel):

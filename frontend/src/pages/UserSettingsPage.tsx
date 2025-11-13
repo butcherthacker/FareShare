@@ -3,16 +3,9 @@ import { useAuth } from "../hooks/useAuth";
 import { apiPatch, apiPost, API_BASE_URL } from "../utils/api";
 import type { User } from "../types";
 
-type Mode = "rider" | "driver";
-
 interface UpdateProfileData {
   full_name?: string;
   email?: string;
-  vehicle_make?: string;
-  vehicle_model?: string;
-  vehicle_year?: number;
-  vehicle_color?: string;
-  vehicle_license_plate?: string;
 }
 
 interface PasswordChangeData {
@@ -22,11 +15,8 @@ interface PasswordChangeData {
 
 export default function UserSettingsPage() {
   const { user, setUser } = useAuth();
-  const [mode, setMode] = useState<Mode>("rider");
-  
   // Modal states
   const [showPersonalModal, setShowPersonalModal] = useState(false);
-  const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   
@@ -56,10 +46,7 @@ export default function UserSettingsPage() {
       .toUpperCase();
   }, [user?.full_name]);
 
-  // Check if user has vehicle info (is a driver)
-  const hasVehicle = useMemo(() => {
-    return !!(user?.vehicle_make || user?.vehicle_model);
-  }, [user?.vehicle_make, user?.vehicle_model]);
+  // (Vehicles are stored on rides now; user profile no longer has vehicle fields)
 
   // Handle avatar upload
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,7 +115,6 @@ export default function UserSettingsPage() {
       
       // Close modals
       setShowPersonalModal(false);
-      setShowVehicleModal(false);
       setShowEmailModal(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile');
@@ -195,7 +181,7 @@ export default function UserSettingsPage() {
 
   // Calculate action sections - MUST be before early return to maintain hook order
   const actionSections = useMemo(() => {
-    const base = [
+    return [
       { 
         label: "Personal details", 
         helper: "name, phone number, ...",
@@ -206,21 +192,7 @@ export default function UserSettingsPage() {
         onClick: () => setShowEmailModal(true)
       },
     ];
-
-    if (mode === "driver") {
-      return [
-        ...base.slice(0, 1),
-        { 
-          label: "Vehicles", 
-          helper: "car, license plate, insurance",
-          onClick: () => setShowVehicleModal(true)
-        },
-        ...base.slice(1),
-      ];
-    }
-
-    return base;
-  }, [mode]);
+  }, []);
 
   // Early return AFTER all hooks
   if (!user) {
@@ -259,42 +231,7 @@ export default function UserSettingsPage() {
 
       <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <section className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid var(--color-secondary)' }}>
-          <div className="px-4 pt-4 flex justify-center">
-            <div className="inline-flex rounded-full overflow-hidden" style={{ border: '1px solid var(--color-secondary)', backgroundColor: 'var(--color-background-warm)' }}>
-              {(["rider", "driver"] as const).map((value) => {
-                const isActive = mode === value;
-                const baseClasses =
-                  "px-6 py-2 text-sm font-semibold transition focus:outline-none";
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setMode(value)}
-                    className={baseClasses}
-                    style={
-                      isActive
-                        ? { backgroundColor: 'var(--color-primary)', color: 'white' }
-                        : { color: '#4a5568' }
-                    }
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.1)';
-                        e.currentTarget.style.color = 'var(--color-primary)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#4a5568';
-                      }
-                    }}
-                  >
-                    {value === "rider" ? "Rider" : "Driver"}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Driver/rider toggle removed — settings are now a single unified page */}
 
           <div className="px-6 py-6">
             <h1 className="text-2xl font-semibold mb-6" style={{ color: 'var(--color-primary)' }}>
@@ -335,9 +272,7 @@ export default function UserSettingsPage() {
                 {user.rating_count > 0 && (
                   <InfoPill label={`⭐ ${user.rating_avg.toFixed(1)} (${user.rating_count} reviews)`} />
                 )}
-                {hasVehicle && (
-                  <InfoPill label={`🚗 ${user.vehicle_make || ''} ${user.vehicle_model || ''}`} />
-                )}
+                {/* Vehicle info removed from user profile — shown on rides instead */}
               </div>
             </div>
           </div>
@@ -487,95 +422,7 @@ export default function UserSettingsPage() {
           </EditModal>
         )}
 
-        {/* Vehicle Details Modal */}
-        {showVehicleModal && (
-          <EditModal
-            title="Edit Vehicle Details"
-            onClose={() => setShowVehicleModal(false)}
-            onSave={(data) => handleUpdateProfile({
-              vehicle_make: data.vehicle_make,
-              vehicle_model: data.vehicle_model,
-              vehicle_year: data.vehicle_year ? parseInt(data.vehicle_year) : undefined,
-              vehicle_color: data.vehicle_color,
-              vehicle_license_plate: data.vehicle_license_plate,
-            })}
-            isLoading={isLoading}
-          >
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>
-                    Make
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicle_make"
-                    defaultValue={user?.vehicle_make || ''}
-                    placeholder="Toyota"
-                    className="w-full px-3 py-2 rounded-lg"
-                    style={{ border: '1px solid var(--color-secondary)' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>
-                    Model
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicle_model"
-                    defaultValue={user?.vehicle_model || ''}
-                    placeholder="Camry"
-                    className="w-full px-3 py-2 rounded-lg"
-                    style={{ border: '1px solid var(--color-secondary)' }}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>
-                    Year
-                  </label>
-                  <input
-                    type="number"
-                    name="vehicle_year"
-                    defaultValue={user?.vehicle_year || ''}
-                    placeholder="2020"
-                    min="1900"
-                    max="2030"
-                    className="w-full px-3 py-2 rounded-lg"
-                    style={{ border: '1px solid var(--color-secondary)' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>
-                    Color
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicle_color"
-                    defaultValue={user?.vehicle_color || ''}
-                    placeholder="Blue"
-                    className="w-full px-3 py-2 rounded-lg"
-                    style={{ border: '1px solid var(--color-secondary)' }}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>
-                  License Plate
-                </label>
-                <input
-                  type="text"
-                  name="vehicle_license_plate"
-                  defaultValue={user?.vehicle_license_plate || ''}
-                  placeholder="ABC-1234"
-                  className="w-full px-3 py-2 rounded-lg"
-                  style={{ border: '1px solid var(--color-secondary)' }}
-                />
-              </div>
-            </div>
-          </EditModal>
-        )}
+        {/* Vehicle modal removed — vehicles are managed on rides */}
 
         {/* Email Modal */}
         {showEmailModal && (
