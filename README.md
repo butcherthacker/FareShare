@@ -58,3 +58,44 @@ For more detailed information:
 
 - [Backend README](./backend/README.md)
 - [Frontend README](./frontend/README.md)
+
+## Making changes to the code (Git workflow)
+
+1. Before you do anything, make sure you're on the main branch and your code is up to date:
+
+```bash
+git switch main
+git pull origin main
+```
+
+2. Make a new branch to make your changes on:
+
+```bash
+git checkout -b branch-name
+```
+
+3. Make your changes. You can check status with:
+
+```bash
+git status
+```
+
+4. Add your changes to the commit. Add the file path to the files you want to commit. Example:
+
+```bash
+git add public/home.html server.js
+```
+
+5. Commit your added changes:
+
+```bash
+git commit -m "text explaining commit changes"
+```
+
+6. Push. You might have to push upstream; if so, follow the terminal instructions (it will show the exact command):
+
+```bash
+git push
+```
+
+7. Repeat from step 1 after pushing your changes so you can make future changes.

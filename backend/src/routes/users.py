@@ -47,7 +47,7 @@ async def update_user_profile(
     """
     Update user profile information.
     
-    Allows updating name, email, and vehicle information.
+    Allows updating name and email.
     Email changes may require re-verification in the future.
     """
     # Check if email is being changed and if it's already taken
@@ -80,18 +80,7 @@ async def update_user_profile(
     # Update other profile fields
     if profile_data.full_name is not None:
         current_user.full_name = profile_data.full_name
-    
-    # Update vehicle information (for drivers)
-    if profile_data.vehicle_make is not None:
-        current_user.vehicle_make = profile_data.vehicle_make
-    if profile_data.vehicle_model is not None:
-        current_user.vehicle_model = profile_data.vehicle_model
-    if profile_data.vehicle_year is not None:
-        current_user.vehicle_year = profile_data.vehicle_year
-    if profile_data.vehicle_color is not None:
-        current_user.vehicle_color = profile_data.vehicle_color
-    if profile_data.vehicle_license_plate is not None:
-        current_user.vehicle_license_plate = profile_data.vehicle_license_plate
+    # Vehicle information is now stored on rides; user profile no longer stores vehicle fields
     
     # Save changes
     await db.commit()
