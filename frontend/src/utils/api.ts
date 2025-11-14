@@ -343,3 +343,84 @@ export async function getTripHistory(userId: string): Promise<TripHistoryRespons
 export async function getDriverSummary(driverId: string): Promise<DriverSummary> {
     return apiGet<DriverSummary>(`/api/trips/summary/${driverId}`);
 }
+
+// ===== BOOKING API FUNCTIONS =====
+
+import type {
+    Booking,
+    BookingCreateData,
+    BookingStatusUpdate,
+    BookingListResponse,
+    BookingStats,
+    BookingQueryParams,
+} from '../types';
+
+/**
+ * Create a new booking (claim seats in a ride)
+ * @param data - Booking creation data
+ * @returns Created booking
+ */
+export async function createBooking(data: BookingCreateData): Promise<Booking> {
+    return apiPost<Booking>('/api/bookings', data);
+}
+
+/**
+ * Get a specific booking by ID
+ * @param bookingId - UUID of the booking
+ * @returns Booking details
+ */
+export async function getBooking(bookingId: string): Promise<Booking> {
+    return apiGet<Booking>(`/api/bookings/${bookingId}`);
+}
+
+/**
+ * List bookings with optional filtering and pagination
+ * @param params - Query parameters for filtering and pagination
+ * @returns Paginated list of bookings
+ */
+export async function listBookings(params?: BookingQueryParams): Promise<BookingListResponse> {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+
+    if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                queryParams.append(key, String(value));
+            }
+        });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/api/bookings?${queryString}` : '/api/bookings';
+
+    return apiGet<BookingListResponse>(endpoint);
+}
+
+/**
+ * Update booking status
+ * @param bookingId - UUID of the booking
+ * @param status - New status
+ * @returns Updated booking
+ */
+export async function updateBookingStatus(
+    bookingId: string,
+    status: BookingStatusUpdate
+): Promise<Booking> {
+    return apiPatch<Booking>(`/api/bookings/${bookingId}/status`, status);
+}
+
+/**
+ * Cancel a booking
+ * @param bookingId - UUID of the booking to cancel
+ */
+export async function cancelBooking(bookingId: string): Promise<void> {
+    return apiDelete<void>(`/api/bookings/${bookingId}`);
+}
+
+/**
+ * Get booking statistics for the current user
+ * @returns Booking statistics
+ */
+export async function getBookingStats(): Promise<BookingStats> {
+    return apiGet<BookingStats>('/api/bookings/stats/summary');
+}

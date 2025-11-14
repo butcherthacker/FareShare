@@ -36,3 +36,15 @@ export type {
     DriverSummary,
     DashboardData,
 } from './dashboard';
+
+export type {
+    BookingStatus,
+    PassengerInfo,
+    RideInfoBasic,
+    BookingCreateData,
+    BookingStatusUpdate,
+    Booking,
+    BookingListResponse,
+    BookingStats,
+    BookingQueryParams,
+} from './booking';
