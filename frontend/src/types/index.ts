@@ -30,9 +30,13 @@ export type {
 } from './ride';
 
 export type {
-    TripRole,
-    TripHistoryItem,
-    TripHistoryResponse,
-    DriverSummary,
-    DashboardData,
-} from './dashboard';
+    BookingStatus,
+    PassengerInfo,
+    RideInfoBasic,
+    BookingCreateData,
+    BookingStatusUpdate,
+    Booking,
+    BookingListResponse,
+    BookingStats,
+    BookingQueryParams,
+} from './booking';

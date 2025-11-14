@@ -9,6 +9,7 @@ import RidePostAndRequestPage from "./pages/RidePostAndRequestPage";
 import UserSettingsPage from "./pages/UserSettingsPage";
 import Ridesearch from "./pages/Ridesearch";
 import Dashboard from "./pages/Dashboard";
+import TripDetails from "./pages/TripDetails";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/signup/success" element={<SignUpSuccess />} />
           <Route path="/rides" element={<RidePostAndRequestPage />} />
           <Route path="/ridesearch" element={<Ridesearch />} />
+          <Route path="/trip/:id" element={<TripDetails />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<UserSettingsPage />} />
         </Routes>

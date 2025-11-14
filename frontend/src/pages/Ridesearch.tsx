@@ -11,9 +11,12 @@ import {
   Star,
   Loader2,
   AlertCircle,
-  Filter
+  Filter,
+  CreditCard
 } from "lucide-react";
 import { searchRides } from "../utils/api";
+import BookingModal from "../components/BookingModal";
+import type { SearchResultRide } from "../types";
 
 type Ride = {
   id: string;
@@ -44,6 +47,10 @@ export default function RidePostAndRequestPage() {
 
   // Debounce timer id
   const [debounceKey, setDebounceKey] = useState(0);
+
+  // Booking modal state
+  const [selectedRideForBooking, setSelectedRideForBooking] = useState<SearchResultRide | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   // Trigger search with debounce
   useEffect(() => {
@@ -108,6 +115,26 @@ export default function RidePostAndRequestPage() {
 
   function resetPagination() {
     setPage(1);
+  }
+
+  // Open booking modal for a specific ride
+  function handleBookRide(ride: Ride) {
+    const searchRide: SearchResultRide = {
+      id: ride.id,
+      from: ride.from,
+      to: ride.to,
+      depart_at: ride.depart_at,
+      seats_available: ride.seats_available,
+      price: ride.price,
+      driver_rating: ride.driver_rating,
+    };
+    setSelectedRideForBooking(searchRide);
+    setIsBookingModalOpen(true);
+  }
+
+  // Refresh search results after successful booking
+  function handleBookingSuccess() {
+    setDebounceKey(k => k + 1); // Trigger refresh
   }
 
   return (
@@ -284,7 +311,7 @@ export default function RidePostAndRequestPage() {
             {results.map((r, index) => (
               <motion.li 
                 key={r.id} 
-                className="rounded p-3 flex justify-between items-center bg-white cursor-pointer"
+                className="rounded p-3 flex justify-between items-start bg-white"
                 style={{ border: '1px solid var(--color-secondary)' }}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -311,21 +338,32 @@ export default function RidePostAndRequestPage() {
                     Rating: {r.driver_rating?.toFixed(1) ?? "N/A"}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end gap-2">
                   <div className="text-lg font-bold flex items-center gap-1 justify-end" style={{ color: 'var(--color-primary)' }}>
                     <DollarSign size={18} />
                     {r.price.toFixed(2)}
                   </div>
-                  <div className="mt-2">
-                    <Link 
-                      to={`/trip/${r.id}`} 
-                      className="text-sm underline flex items-center gap-1 justify-end transition-colors hover:opacity-80"
-                      style={{ color: 'var(--color-accent)' }}
-                    >
-                      View Details
-                      <ArrowRight size={14} />
-                    </Link>
-                  </div>
+                  
+                  {/* Book Ride Button */}
+                  <motion.button
+                    onClick={() => handleBookRide(r)}
+                    className="px-4 py-2 rounded-lg text-white font-semibold text-sm flex items-center gap-2 transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: 'var(--color-accent)' }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <CreditCard size={16} />
+                    Book Now
+                  </motion.button>
+
+                  <Link 
+                    to={`/trip/${r.id}`} 
+                    className="text-sm underline flex items-center gap-1 justify-end transition-colors hover:opacity-80"
+                    style={{ color: 'var(--color-accent)' }}
+                  >
+                    View Details
+                    <ArrowRight size={14} />
+                  </Link>
                 </div>
               </motion.li>
             ))}
@@ -375,6 +413,17 @@ export default function RidePostAndRequestPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Booking Modal */}
+      <BookingModal
+        ride={selectedRideForBooking}
+        isOpen={isBookingModalOpen}
+        onClose={() => {
+          setIsBookingModalOpen(false);
+          setSelectedRideForBooking(null);
+        }}
+        onSuccess={handleBookingSuccess}
+      />
     </div>
   );
 }
