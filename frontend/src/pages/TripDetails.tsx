@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { MapPin, Calendar, Users, DollarSign, Star, ArrowLeft, User, CheckCircle, Clock } from "lucide-react";
+import { Calendar, Users, DollarSign, Star, ArrowLeft, User, CheckCircle, Clock } from "lucide-react";
 import { getRide } from "../utils/api";
 import { listBookings } from "../utils/api";
 import BookingModal from "../components/BookingModal";
@@ -67,7 +67,7 @@ export default function TripDetails() {
 
     (async () => {
       try {
-        const res: any = await listBookings({ ride_id: id, page_size: 100 });
+        const res: any = await listBookings({ ride_id: id, page_size: 100 } as any);
         if (!cancelled) setBookings(res.bookings ?? []);
       } catch (err: any) {
         // eslint-disable-next-line no-console
@@ -75,8 +75,8 @@ export default function TripDetails() {
         const status = err?.statusCode ?? err?.status;
         if (status === 422) {
           // Try alternate query param 'ride'
-          try {
-            const alt: any = await listBookings({ ride: id, page_size: 100 });
+            try {
+            const alt: any = await listBookings({ ride: id, page_size: 100 } as any);
             if (!cancelled) setBookings(alt.bookings ?? []);
           } catch (err2: any) {
             // eslint-disable-next-line no-console

@@ -254,6 +254,7 @@ async def list_bookings(
     # Filters
     status: Optional[str] = Query(None, description="Filter by booking status"),
     role: Optional[str] = Query(None, description="Filter by role: 'passenger' or 'driver'"),
+    ride_id: Optional[str] = Query(None, description="Filter bookings by ride ID"),
     
     # Date filters
     from_date: Optional[datetime] = Query(None, description="Filter bookings from this date"),
@@ -314,6 +315,10 @@ async def list_bookings(
     # Filter by status
     if status:
         conditions.append(Booking.status == status)
+
+    # Filter by ride id (returns only bookings for a specific ride)
+    if ride_id:
+        conditions.append(Booking.ride_id == ride_id)
     
     # Filter by date range
     if from_date:

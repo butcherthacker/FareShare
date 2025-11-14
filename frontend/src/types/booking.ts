@@ -111,4 +111,7 @@ export interface BookingQueryParams {
     to_date?: string;   // ISO datetime string
     sort_by?: "booked_at" | "status";
     sort_order?: "asc" | "desc";
+    // Optional filters accepted by the backend (some APIs use ride or ride_id)
+    ride_id?: string;
+    ride?: string;
 }
