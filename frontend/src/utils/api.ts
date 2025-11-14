@@ -322,28 +322,6 @@ export async function searchRides(params?: Record<string, any>): Promise<SearchR
     return apiGet<SearchResponse>(endpoint);
 }
 
-// ===== DASHBOARD / TRIP SUMMARY API FUNCTIONS =====
-
-import type { TripHistoryResponse, DriverSummary } from '../types';
-
-/**
- * Get trip history for a user (as rider or driver)
- * @param userId - UUID of the user
- * @returns Trip history with ride and booking details
- */
-export async function getTripHistory(userId: string): Promise<TripHistoryResponse> {
-    return apiGet<TripHistoryResponse>(`/api/trips/history/${userId}`);
-}
-
-/**
- * Get driver summary statistics (total trips, earnings, average per ride)
- * @param driverId - UUID of the driver
- * @returns Driver summary statistics
- */
-export async function getDriverSummary(driverId: string): Promise<DriverSummary> {
-    return apiGet<DriverSummary>(`/api/trips/summary/${driverId}`);
-}
-
 // ===== BOOKING API FUNCTIONS =====
 
 import type {
