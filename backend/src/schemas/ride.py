@@ -39,16 +39,49 @@ class RideCreate(BaseModel):
         - ride_type: "request"
         - seats_total: number of seats needed (usually 1)
         - price_share: willing to pay amount
+    
+    **Coordinates:**
+    Use the /api/geo/geocode endpoint to convert addresses to coordinates.
+    Coordinates are strongly recommended for map display and proximity search.
+    If not provided, coordinates will default to (0, 0).
     """
     ride_type: RideType
     
-    # Location information
-    origin_label: str  # Human-readable (e.g., "123 Main St, Toronto")
-    destination_label: str
-    origin_lat: Optional[float] = None  # GPS coordinates (optional until map integration)
-    origin_lng: Optional[float] = None
-    destination_lat: Optional[float] = None
-    destination_lng: Optional[float] = None
+    # Location information - Human-readable labels
+    origin_label: str = Field(
+        ..., 
+        description="Human-readable starting point (e.g., '123 Main St, Toronto')"
+    )
+    destination_label: str = Field(
+        ..., 
+        description="Human-readable destination (e.g., 'Pearson Airport')"
+    )
+    
+    # Location information - GPS coordinates (use /api/geo/geocode to get these)
+    origin_lat: Optional[float] = Field(
+        None, 
+        ge=-90, 
+        le=90,
+        description="Origin latitude (-90 to 90). Get from /api/geo/geocode endpoint."
+    )
+    origin_lng: Optional[float] = Field(
+        None, 
+        ge=-180, 
+        le=180,
+        description="Origin longitude (-180 to 180). Get from /api/geo/geocode endpoint."
+    )
+    destination_lat: Optional[float] = Field(
+        None, 
+        ge=-90, 
+        le=90,
+        description="Destination latitude (-90 to 90). Get from /api/geo/geocode endpoint."
+    )
+    destination_lng: Optional[float] = Field(
+        None, 
+        ge=-180, 
+        le=180,
+        description="Destination longitude (-180 to 180). Get from /api/geo/geocode endpoint."
+    )
     
     # Schedule
     departure_time: datetime  # When driver leaves (or when passenger needs ride)
@@ -294,7 +327,10 @@ class DriverInfo(BaseModel):
 class RideResponse(BaseModel):
     """
     Schema for ride response.
-    Returns complete ride information with driver details.
+    Returns complete ride information with driver details and coordinates.
+    
+    **Coordinates are always included** for map display and proximity features.
+    If coordinates were not provided during creation, they will default to (0, 0).
     """
     id: str
     ride_type: str  # "offer" or "request" (derived from status)
@@ -303,13 +339,15 @@ class RideResponse(BaseModel):
     driver_id: str
     driver: Optional[DriverInfo] = None
     
-    # Location
-    origin_label: Optional[str] = None
-    destination_label: Optional[str] = None
-    origin_lat: Optional[float] = None
-    origin_lng: Optional[float] = None
-    destination_lat: Optional[float] = None
-    destination_lng: Optional[float] = None
+    # Location - Human-readable labels
+    origin_label: Optional[str] = Field(None, description="Human-readable origin")
+    destination_label: Optional[str] = Field(None, description="Human-readable destination")
+    
+    # Location - GPS coordinates for map display
+    origin_lat: Optional[float] = Field(None, description="Origin latitude")
+    origin_lng: Optional[float] = Field(None, description="Origin longitude")
+    destination_lat: Optional[float] = Field(None, description="Destination latitude")
+    destination_lng: Optional[float] = Field(None, description="Destination longitude")
     
     # Schedule
     departure_time: datetime
@@ -359,7 +397,11 @@ class RideListResponse(BaseModel):
 # ===== SEARCH RESPONSE SCHEMAS =====
 
 class RideSearchItem(BaseModel):
-    """Simplified ride info returned by the search endpoint"""
+    """
+    Simplified ride info returned by the search endpoint.
+    
+    Includes coordinates for map display on search results page.
+    """
     id: str
     from_label: Optional[str] = Field(None, alias="from")
     to_label: Optional[str] = Field(None, alias="to")
@@ -368,6 +410,12 @@ class RideSearchItem(BaseModel):
     price: float
     driver_rating: Optional[float] = None
     ride_type: str
+    
+    # Coordinates for map display
+    origin_lat: Optional[float] = Field(None, description="Origin latitude")
+    origin_lng: Optional[float] = Field(None, description="Origin longitude")
+    destination_lat: Optional[float] = Field(None, description="Destination latitude")
+    destination_lng: Optional[float] = Field(None, description="Destination longitude")
 
     model_config = {
         "from_attributes": True,

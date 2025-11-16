@@ -74,6 +74,8 @@ app.include_router(users_router, prefix="/api")
 app.include_router(rides_router, prefix="/api")
 app.include_router(booking_router, prefix="/api")
 app.include_router(trip_summary.router) # Trip summary routes (already has /api/trips prefix)
+from src.routes.geo import router as geo_router
+app.include_router(geo_router, prefix="/api")  # Geocoding routes
 
 
 
