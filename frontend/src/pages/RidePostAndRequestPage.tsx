@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useRides } from "../hooks/useRides";
 import { useAuth } from "../hooks/useAuth";
-import { geocodeAddress, type GeocodingResult } from "../utils/geocoding";
+import { geocodeAddress } from "../utils/geocoding";
 import RideMap from "../components/RideMap";
 import type { RideCreateData, Ride } from "../types";
 
