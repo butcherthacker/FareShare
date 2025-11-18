@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   MapPin, 
@@ -22,6 +21,8 @@ import {
 } from "lucide-react";
 import { useRides } from "../hooks/useRides";
 import { useAuth } from "../hooks/useAuth";
+import { geocodeAddress, type GeocodingResult } from "../utils/geocoding";
+import RideMap from "../components/RideMap";
 import type { RideCreateData, Ride } from "../types";
 
 type Mode = "rider" | "driver";
@@ -83,7 +84,14 @@ export default function RidePostAndRequestPage() {
     vehicle_color: "",
     vehicle_year: undefined,
   });
-  const [coords, setCoords] = useState<[number, number][]>([]);
+  const [coords, setCoords] = useState<{
+    origin: { lat: number; lng: number } | null;
+    destination: { lat: number; lng: number } | null;
+  }>({ origin: null, destination: null });
+  const [geocodingStatus, setGeocodingStatus] = useState<{
+    origin: 'idle' | 'loading' | 'success' | 'error';
+    destination: 'idle' | 'loading' | 'success' | 'error';
+  }>({ origin: 'idle', destination: 'idle' });
   const [confirmation, setConfirmation] = useState("");
   const [editingRide, setEditingRide] = useState<EditingRide | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,31 +112,88 @@ export default function RidePostAndRequestPage() {
   }, [isAuthenticated, user, hasInitialLoad, fetchMyRides]);
 
   /**
-   * TODO: Replace with actual geocoding service
-   * This is a temporary placeholder that generates random coordinates
-   * In production, integrate with a real geocoding API (e.g., Google Maps, Mapbox, OpenStreetMap Nominatim)
+   * Geocode origin address when it changes
+   * Debounced to prevent excessive API calls
    */
-  function fakeGeocode(address: string): [number, number] {
-    // Generate deterministic "random" coordinates based on address hash
-    // This is just for demo purposes - DO NOT use in production
-    const hash = address.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const lat = 43.0 + (hash % 100) * 0.01;
-    const lng = -80.0 - (hash % 100) * 0.01;
-    return [lat, lng];
-  }
+  const geocodeOrigin = useCallback(async (address: string) => {
+    if (!address || address.trim().length < 3) {
+      setCoords(prev => ({ ...prev, origin: null }));
+      setGeocodingStatus(prev => ({ ...prev, origin: 'idle' }));
+      return;
+    }
+
+    setGeocodingStatus(prev => ({ ...prev, origin: 'loading' }));
+
+    try {
+      const results = await geocodeAddress(address, 1);
+      
+      if (results.length > 0) {
+        const { lat, lon } = results[0];
+        setCoords(prev => ({ ...prev, origin: { lat, lng: lon } }));
+        setGeocodingStatus(prev => ({ ...prev, origin: 'success' }));
+      } else {
+        setCoords(prev => ({ ...prev, origin: null }));
+        setGeocodingStatus(prev => ({ ...prev, origin: 'error' }));
+      }
+    } catch (error) {
+      console.error('Origin geocoding error:', error);
+      setCoords(prev => ({ ...prev, origin: null }));
+      setGeocodingStatus(prev => ({ ...prev, origin: 'error' }));
+    }
+  }, []);
 
   /**
-   * Update map coordinates when origin/destination change
+   * Geocode destination address when it changes
+   * Debounced to prevent excessive API calls
+   */
+  const geocodeDestination = useCallback(async (address: string) => {
+    if (!address || address.trim().length < 3) {
+      setCoords(prev => ({ ...prev, destination: null }));
+      setGeocodingStatus(prev => ({ ...prev, destination: 'idle' }));
+      return;
+    }
+
+    setGeocodingStatus(prev => ({ ...prev, destination: 'loading' }));
+
+    try {
+      const results = await geocodeAddress(address, 1);
+      
+      if (results.length > 0) {
+        const { lat, lon } = results[0];
+        setCoords(prev => ({ ...prev, destination: { lat, lng: lon } }));
+        setGeocodingStatus(prev => ({ ...prev, destination: 'success' }));
+      } else {
+        setCoords(prev => ({ ...prev, destination: null }));
+        setGeocodingStatus(prev => ({ ...prev, destination: 'error' }));
+      }
+    } catch (error) {
+      console.error('Destination geocoding error:', error);
+      setCoords(prev => ({ ...prev, destination: null }));
+      setGeocodingStatus(prev => ({ ...prev, destination: 'error' }));
+    }
+  }, []);
+
+  /**
+   * Debounced effect for geocoding origin
    */
   useEffect(() => {
-    if (form.from && form.to) {
-      const start = fakeGeocode(form.from);
-      const end = fakeGeocode(form.to);
-      setCoords([start, end]);
-    } else {
-      setCoords([]);
-    }
-  }, [form.from, form.to]);
+    const timeoutId = setTimeout(() => {
+      geocodeOrigin(form.from);
+    }, 800); // Wait 800ms after user stops typing
+
+    return () => clearTimeout(timeoutId);
+  }, [form.from, geocodeOrigin]);
+
+  /**
+   * Debounced effect for geocoding destination
+   */
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      geocodeDestination(form.to);
+    }, 800); // Wait 800ms after user stops typing
+
+    return () => clearTimeout(timeoutId);
+  }, [form.to, geocodeDestination]);
 
   /**
    * Clear confirmation message after 5 seconds
@@ -152,20 +217,18 @@ export default function RidePostAndRequestPage() {
 
   /**
    * Convert form data to API format
+   * Uses real coordinates from geocoding results
    */
   const formToRideData = (formData: RideFormData): RideCreateData => {
-    // TODO: Replace fake geocoding with real coordinates from map integration
-    const originCoords = formData.from ? fakeGeocode(formData.from) : null;
-    const destCoords = formData.to ? fakeGeocode(formData.to) : null;
-
     const rideData: RideCreateData = {
       ride_type: mode === "driver" ? "offer" : "request",
       origin_label: formData.from,
       destination_label: formData.to,
-      origin_lat: originCoords?.[0],
-      origin_lng: originCoords?.[1],
-      destination_lat: destCoords?.[0],
-      destination_lng: destCoords?.[1],
+      // Use geocoded coordinates if available
+      origin_lat: coords.origin?.lat,
+      origin_lng: coords.origin?.lng,
+      destination_lat: coords.destination?.lat,
+      destination_lng: coords.destination?.lng,
       departure_time: new Date(formData.date).toISOString(),
       seats_total: formData.seats,
       price_share: formData.cost,
@@ -649,35 +712,41 @@ export default function RidePostAndRequestPage() {
           >
             <MapPinned size={18} />
             Route Preview
+            {(geocodingStatus.origin === 'loading' || geocodingStatus.destination === 'loading') && (
+              <Loader2 size={14} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
+            )}
           </motion.h3>
-          <motion.div 
-            className="rounded-lg overflow-hidden h-64" 
-            style={{ border: '2px solid var(--color-secondary)' }}
+          
+          {/* Geocoding status indicator */}
+          {(geocodingStatus.origin === 'error' || geocodingStatus.destination === 'error') && (
+            <motion.div
+              className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs flex items-center gap-2"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <AlertCircle size={14} className="text-yellow-600" />
+              <span className="text-yellow-800">
+                {geocodingStatus.origin === 'error' && 'Cannot find origin address. '}
+                {geocodingStatus.destination === 'error' && 'Cannot find destination address. '}
+                Trip will not be shown on map.
+              </span>
+            </motion.div>
+          )}
+
+          <motion.div
             whileHover={{ scale: 1.01 }}
             transition={{ duration: 0.2 }}
           >
-            <MapContainer
-              bounds={coords.length === 2 ? coords : [[43.4, -80.6], [43.5, -80.4]]}
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer
-                {...({
-                  attribution:
-                    '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-                  url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                } as any)}
-              />
-              {coords.length === 2 && (
-                <>
-                  <Marker position={coords[0]} />
-                  <Marker position={coords[1]} />
-                  <Polyline
-                    positions={coords}
-                    pathOptions={{ color: "#fc4a1a" }}
-                  />
-                </>
-              )}
-            </MapContainer>
+            <RideMap
+              originLat={coords.origin?.lat}
+              originLng={coords.origin?.lng}
+              destinationLat={coords.destination?.lat}
+              destinationLng={coords.destination?.lng}
+              originLabel={form.from || 'Origin'}
+              destinationLabel={form.to || 'Destination'}
+              showRoute={true}
+              height="256px"
+            />
           </motion.div>
         </div>
 

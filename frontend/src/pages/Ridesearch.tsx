@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
@@ -12,10 +12,13 @@ import {
   Loader2,
   AlertCircle,
   Filter,
-  CreditCard
+  CreditCard,
+  MapPinned
 } from "lucide-react";
 import { searchRides } from "../utils/api";
+import { geocodeAddress } from "../utils/geocoding";
 import BookingModal from "../components/BookingModal";
+import RideMap from "../components/RideMap";
 import type { SearchResultRide } from "../types";
 
 type Ride = {
@@ -26,6 +29,10 @@ type Ride = {
   seats_available: number;
   price: number;
   driver_rating?: number;
+  origin_lat?: number | null;
+  origin_lng?: number | null;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
 };
 
 export default function RidePostAndRequestPage() {
@@ -35,6 +42,16 @@ export default function RidePostAndRequestPage() {
   const [date, setDate] = useState("");
   const [seats, setSeats] = useState<number>(1);
   const [maxPrice, setMaxPrice] = useState<number | "">("");
+
+  // Geocoding state for search filters
+  const [searchCoords, setSearchCoords] = useState<{
+    origin: { lat: number; lng: number } | null;
+    destination: { lat: number; lng: number } | null;
+  }>({ origin: null, destination: null });
+  const [geocodingStatus, setGeocodingStatus] = useState<{
+    origin: 'idle' | 'loading' | 'success' | 'error';
+    destination: 'idle' | 'loading' | 'success' | 'error';
+  }>({ origin: 'idle', destination: 'idle' });
 
   // Search results
   const [results, setResults] = useState<Ride[]>([]);
@@ -51,6 +68,88 @@ export default function RidePostAndRequestPage() {
   // Booking modal state
   const [selectedRideForBooking, setSelectedRideForBooking] = useState<SearchResultRide | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+
+  /**
+   * Geocode search origin address
+   */
+  const geocodeSearchOrigin = useCallback(async (address: string) => {
+    if (!address || address.trim().length < 3) {
+      setSearchCoords(prev => ({ ...prev, origin: null }));
+      setGeocodingStatus(prev => ({ ...prev, origin: 'idle' }));
+      return;
+    }
+
+    setGeocodingStatus(prev => ({ ...prev, origin: 'loading' }));
+
+    try {
+      const results = await geocodeAddress(address, 1);
+      
+      if (results.length > 0) {
+        const { lat, lon } = results[0];
+        setSearchCoords(prev => ({ ...prev, origin: { lat, lng: lon } }));
+        setGeocodingStatus(prev => ({ ...prev, origin: 'success' }));
+      } else {
+        setSearchCoords(prev => ({ ...prev, origin: null }));
+        setGeocodingStatus(prev => ({ ...prev, origin: 'error' }));
+      }
+    } catch (error) {
+      console.error('Search origin geocoding error:', error);
+      setSearchCoords(prev => ({ ...prev, origin: null }));
+      setGeocodingStatus(prev => ({ ...prev, origin: 'error' }));
+    }
+  }, []);
+
+  /**
+   * Geocode search destination address
+   */
+  const geocodeSearchDestination = useCallback(async (address: string) => {
+    if (!address || address.trim().length < 3) {
+      setSearchCoords(prev => ({ ...prev, destination: null }));
+      setGeocodingStatus(prev => ({ ...prev, destination: 'idle' }));
+      return;
+    }
+
+    setGeocodingStatus(prev => ({ ...prev, destination: 'loading' }));
+
+    try {
+      const results = await geocodeAddress(address, 1);
+      
+      if (results.length > 0) {
+        const { lat, lon } = results[0];
+        setSearchCoords(prev => ({ ...prev, destination: { lat, lng: lon } }));
+        setGeocodingStatus(prev => ({ ...prev, destination: 'success' }));
+      } else {
+        setSearchCoords(prev => ({ ...prev, destination: null }));
+        setGeocodingStatus(prev => ({ ...prev, destination: 'error' }));
+      }
+    } catch (error) {
+      console.error('Search destination geocoding error:', error);
+      setSearchCoords(prev => ({ ...prev, destination: null }));
+      setGeocodingStatus(prev => ({ ...prev, destination: 'error' }));
+    }
+  }, []);
+
+  /**
+   * Debounced geocoding for origin
+   */
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      geocodeSearchOrigin(origin);
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [origin, geocodeSearchOrigin]);
+
+  /**
+   * Debounced geocoding for destination
+   */
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      geocodeSearchDestination(destination);
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [destination, geocodeSearchDestination]);
 
   // Trigger search with debounce
   useEffect(() => {
@@ -91,6 +190,10 @@ export default function RidePostAndRequestPage() {
                 seats_available: item.seats_available ?? item.seats ?? 0,
                 price: item.price ?? item.price_share ?? 0,
                 driver_rating: item.driver_rating ?? item.driver?.rating_avg ?? undefined,
+                origin_lat: item.origin_lat ?? null,
+                origin_lng: item.origin_lng ?? null,
+                destination_lat: item.destination_lat ?? null,
+                destination_lng: item.destination_lng ?? null,
               }))
             : [];
 
@@ -234,6 +337,42 @@ export default function RidePostAndRequestPage() {
               </motion.button>
             </div>
           </div>
+
+          {/* Search Area Preview Map */}
+          {(origin || destination) && (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPinned size={16} style={{ color: 'var(--color-accent)' }} />
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
+                  Search Area
+                  {(geocodingStatus.origin === 'loading' || geocodingStatus.destination === 'loading') && (
+                    <Loader2 size={14} className="inline ml-2 animate-spin" style={{ color: 'var(--color-accent)' }} />
+                  )}
+                </h3>
+              </div>
+              
+              {(geocodingStatus.origin === 'error' || geocodingStatus.destination === 'error') && (
+                <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs flex items-center gap-2">
+                  <AlertCircle size={14} className="text-yellow-600" />
+                  <span className="text-yellow-800">
+                    {geocodingStatus.origin === 'error' && 'Cannot find origin address. '}
+                    {geocodingStatus.destination === 'error' && 'Cannot find destination address. '}
+                  </span>
+                </div>
+              )}
+
+              <RideMap
+                originLat={searchCoords.origin?.lat}
+                originLng={searchCoords.origin?.lng}
+                destinationLat={searchCoords.destination?.lat}
+                destinationLng={searchCoords.destination?.lng}
+                originLabel={origin || 'Origin'}
+                destinationLabel={destination || 'Destination'}
+                showRoute={true}
+                height="200px"
+              />
+            </div>
+          )}
         </motion.div>
 
         {/* Results / empty / error */}
@@ -311,7 +450,7 @@ export default function RidePostAndRequestPage() {
             {results.map((r, index) => (
               <motion.li 
                 key={r.id} 
-                className="rounded p-3 flex justify-between items-start bg-white"
+                className="rounded p-3 bg-white"
                 style={{ border: '1px solid var(--color-secondary)' }}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -322,48 +461,64 @@ export default function RidePostAndRequestPage() {
                   borderColor: 'var(--color-primary)'
                 }}
               >
-                <div>
-                  <div className="font-semibold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-                    <MapPin size={16} />
-                    {r.from} → {r.to}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="font-semibold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                      <MapPin size={16} />
+                      {r.from} → {r.to}
+                    </div>
+                    <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
+                      <Calendar size={14} />
+                      Departing: {new Date(r.depart_at).toLocaleString()}
+                    </div>
+                    <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
+                      <Users size={14} />
+                      Seats: {r.seats_available} • 
+                      <Star size={14} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
+                      Rating: {r.driver_rating?.toFixed(1) ?? "N/A"}
+                    </div>
                   </div>
-                  <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
-                    <Calendar size={14} />
-                    Departing: {new Date(r.depart_at).toLocaleString()}
-                  </div>
-                  <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
-                    <Users size={14} />
-                    Seats: {r.seats_available} • 
-                    <Star size={14} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
-                    Rating: {r.driver_rating?.toFixed(1) ?? "N/A"}
+                  <div className="text-right flex flex-col items-end gap-2 ml-4">
+                    <div className="text-lg font-bold flex items-center gap-1 justify-end" style={{ color: 'var(--color-primary)' }}>
+                      <DollarSign size={18} />
+                      {r.price.toFixed(2)}
+                    </div>
+                    
+                    {/* Book Ride Button */}
+                    <motion.button
+                      onClick={() => handleBookRide(r)}
+                      className="px-4 py-2 rounded-lg text-white font-semibold text-sm flex items-center gap-2 transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: 'var(--color-accent)' }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <CreditCard size={16} />
+                      Book Now
+                    </motion.button>
+
+                    <Link 
+                      to={`/trip/${r.id}`} 
+                      className="text-sm underline flex items-center gap-1 justify-end transition-colors hover:opacity-80"
+                      style={{ color: 'var(--color-accent)' }}
+                    >
+                      View Details
+                      <ArrowRight size={14} />
+                    </Link>
                   </div>
                 </div>
-                <div className="text-right flex flex-col items-end gap-2">
-                  <div className="text-lg font-bold flex items-center gap-1 justify-end" style={{ color: 'var(--color-primary)' }}>
-                    <DollarSign size={18} />
-                    {r.price.toFixed(2)}
-                  </div>
-                  
-                  {/* Book Ride Button */}
-                  <motion.button
-                    onClick={() => handleBookRide(r)}
-                    className="px-4 py-2 rounded-lg text-white font-semibold text-sm flex items-center gap-2 transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: 'var(--color-accent)' }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <CreditCard size={16} />
-                    Book Now
-                  </motion.button>
 
-                  <Link 
-                    to={`/trip/${r.id}`} 
-                    className="text-sm underline flex items-center gap-1 justify-end transition-colors hover:opacity-80"
-                    style={{ color: 'var(--color-accent)' }}
-                  >
-                    View Details
-                    <ArrowRight size={14} />
-                  </Link>
+                {/* Trip Route Mini Map */}
+                <div className="mt-3">
+                  <RideMap
+                    originLat={r.origin_lat}
+                    originLng={r.origin_lng}
+                    destinationLat={r.destination_lat}
+                    destinationLng={r.destination_lng}
+                    originLabel={r.from}
+                    destinationLabel={r.to}
+                    showRoute={true}
+                    height="180px"
+                  />
                 </div>
               </motion.li>
             ))}
