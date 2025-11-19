@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, Users, DollarSign, Star, ArrowLeft, User, CheckCircle, Clock } from "lucide-react";
+import { Calendar, Users, DollarSign, Star, ArrowLeft, User, CheckCircle, Clock, MapPin } from "lucide-react";
 import { getRide } from "../utils/api";
 import { listBookings } from "../utils/api";
 import BookingModal from "../components/BookingModal";
 import ErrorBoundary from "../components/ErrorBoundary";
+import RideMap from "../components/RideMap";
 import type { Ride } from "../types/ride";
 import type { SearchResultRide } from "../types";
 import type { Booking } from "../types/booking";
@@ -155,15 +156,22 @@ export default function TripDetails() {
                 </div>
               </div>
 
-              {/* Map placeholder */}
-              <div className="mt-5 rounded-lg overflow-hidden" style={{ border: '1px solid var(--color-secondary)' }}>
-                <div style={{ height: 220, background: 'linear-gradient(90deg, rgba(249,250,251,1) 0%, rgba(255,255,255,1) 100%)' }} className="flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <div style={{ width: 120, height: 80, borderRadius: 8, backgroundColor: '#f3f4f6', display: 'inline-block', marginBottom: 8 }}></div>
-                    <div className="text-sm">Map placeholder</div>
-                    <div className="text-xs text-gray-400">Map will appear here</div>
-                  </div>
-                </div>
+              {/* Trip Route Map */}
+              <div className="mt-5">
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--color-primary)'}}>
+                  <MapPin size={16} />
+                  Trip Route
+                </h3>
+                <RideMap
+                  originLat={ride.origin_lat}
+                  originLng={ride.origin_lng}
+                  destinationLat={ride.destination_lat}
+                  destinationLng={ride.destination_lng}
+                  originLabel={ride.origin_label || 'Origin'}
+                  destinationLabel={ride.destination_label || 'Destination'}
+                  showRoute={true}
+                  height="280px"
+                />
               </div>
 
               {ride.notes && (
