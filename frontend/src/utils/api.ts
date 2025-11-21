@@ -95,6 +95,13 @@ export async function apiRequest<T>(
             headers,
         });
 
+        console.log('API Request:', {
+            url,
+            method: options.method || 'GET',
+            status: response.status,
+            ok: response.ok
+        });
+
         // Handle 204 No Content - no body to parse
         if (response.status === 204) {
             return undefined as T;
@@ -132,6 +139,12 @@ export async function apiRequest<T>(
 
         return data as T;
     } catch (error) {
+        console.error('API Request Error:', {
+            url,
+            error,
+            errorType: error instanceof TypeError ? 'TypeError (Network)' : error instanceof ApiClientError ? 'ApiClientError' : 'Other'
+        });
+
         // Re-throw ApiClientError as-is
         if (error instanceof ApiClientError) {
             throw error;

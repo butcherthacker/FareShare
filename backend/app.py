@@ -63,8 +63,13 @@ app = FastAPI(
 # CORS middleware - configure based on your frontend URL
 app.add_middleware(
     CORSMiddleware,
-    # Allow all origins for development - replace with specific domains in production
-    allow_origins=["*"],  # For development only!
+    # Allow localhost and 127.0.0.1 on various ports for development
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
@@ -83,6 +88,8 @@ app.include_router(booking_router, prefix="/api")
 app.include_router(trip_summary.router) # Trip summary routes (already has /api/trips prefix)
 from src.routes.geo import router as geo_router
 app.include_router(geo_router, prefix="/api")  # Geocoding routes
+from src.routes.messages import router as messages_router
+app.include_router(messages_router)  # Messaging routes (already has /api/messages prefix)
 
 # Include admin routers (Sprint 3)
 app.include_router(auth_router)  # Auth routes for admin

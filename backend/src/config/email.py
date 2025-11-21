@@ -56,21 +56,21 @@ async def send_verification_email(email: EmailStr, full_name: str, verification_
                 padding: 20px;
             }}
             .header {{
-                background-color: #4F46E5;
+                background-color: #fc4a1a;
                 color: white;
                 padding: 20px;
                 text-align: center;
                 border-radius: 5px 5px 0 0;
             }}
             .content {{
-                background-color: #f9f9f9;
+                background-color: #fef3e2;
                 padding: 30px;
                 border-radius: 0 0 5px 5px;
             }}
             .button {{
                 display: inline-block;
                 padding: 12px 30px;
-                background-color: #4F46E5;
+                background-color: #fc4a1a;
                 color: white;
                 text-decoration: none;
                 border-radius: 5px;
@@ -154,21 +154,21 @@ async def send_password_reset_email(email: EmailStr, full_name: str, reset_token
                 padding: 20px;
             }}
             .header {{
-                background-color: #4F46E5;
+                background-color: #fc4a1a;
                 color: white;
                 padding: 20px;
                 text-align: center;
                 border-radius: 5px 5px 0 0;
             }}
             .content {{
-                background-color: #f9f9f9;
+                background-color: #fef3e2;
                 padding: 30px;
                 border-radius: 0 0 5px 5px;
             }}
             .button {{
                 display: inline-block;
                 padding: 12px 30px;
-                background-color: #DC2626;
+                background-color: #fc4a1a;
                 color: white;
                 text-decoration: none;
                 border-radius: 5px;
@@ -217,6 +217,128 @@ async def send_password_reset_email(email: EmailStr, full_name: str, reset_token
     message = MessageSchema(
         subject="Reset Your FareShare Password",
         recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+    
+    await fm.send_message(message)
+
+
+async def send_user_message_email(
+    sender_name: str,
+    sender_email: EmailStr,
+    recipient_name: str,
+    recipient_email: EmailStr,
+    message_content: str,
+    ride_details: dict = None
+):
+    """
+    Send a message from one user to another regarding a shared ride.
+    
+    Args:
+        sender_name: Name of the user sending the message
+        sender_email: Email of sender (for context)
+        recipient_name: Name of the recipient user
+        recipient_email: Email address to send to
+        message_content: The actual message from the user
+        ride_details: Optional dict with ride info (origin, destination, date, etc.)
+    """
+    
+    # Build ride info section if provided
+    ride_info = ""
+    if ride_details:
+        ride_info = f"""<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 15px 0;">
+<tr>
+<td style="padding: 10px 0;">
+<p style="margin: 0;"><strong>Ride Details:</strong></p>
+<p style="margin: 5px 0 0 0;"><strong>From:</strong> {ride_details.get('origin', 'N/A')}</p>
+<p style="margin: 5px 0 0 0;"><strong>To:</strong> {ride_details.get('destination', 'N/A')}</p>
+<p style="margin: 5px 0 0 0;"><strong>Date:</strong> {ride_details.get('date', 'N/A')}</p>
+<p style="margin: 5px 0 0 0;"><strong>Time:</strong> {ride_details.get('time', 'N/A')}</p>
+</td>
+</tr>
+</table>"""
+
+    # HTML email template
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            .header {{
+                background-color: #fc4a1a;
+                color: white;
+                padding: 20px;
+                text-align: center;
+                border-radius: 5px 5px 0 0;
+            }}
+            .content {{
+                background-color: #fef3e2;
+                padding: 30px;
+                border-radius: 0 0 5px 5px;
+            }}
+            .button {{
+                display: inline-block;
+                padding: 12px 30px;
+                background-color: #4F46E5;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                margin: 20px 0;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 20px;
+                font-size: 12px;
+                color: #666;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>New Message from Your Ride Partner</h1>
+            </div>
+            <div class="content">
+                <h2>Hi {recipient_name},</h2>
+                <p>You have received a new message from <strong>{sender_name}</strong> regarding your shared ride on FareShare.</p>
+                
+                {ride_info}
+                
+                <p><strong>Message:</strong></p>
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 15px 0;">
+                    <tr>
+                        <td style="background-color: #ffffff; padding: 15px; border-left: 4px solid #fc4a1a;">
+                            <p style="margin: 0; white-space: pre-wrap;">{message_content}</p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <p><strong>Note:</strong> For your privacy, user email addresses are not publicly shared. All replies are sent through FareShare's secure messaging system.</p>
+                
+                <p>Safe travels,<br>The FareShare Team</p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2025 FareShare. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    message = MessageSchema(
+        subject=f"Message from {sender_name} - FareShare Ride",
+        recipients=[recipient_email],
         body=html,
         subtype=MessageType.html
     )
