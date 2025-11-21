@@ -10,6 +10,7 @@ import UserSettingsPage from "./pages/UserSettingsPage";
 import Ridesearch from "./pages/Ridesearch";
 import Dashboard from "./pages/Dashboard";
 import TripDetails from "./pages/TripDetails";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/trip/:id" element={<TripDetails />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<UserSettingsPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </Router>
     </AuthProvider>
