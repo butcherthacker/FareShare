@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, Users, DollarSign, Star, ArrowLeft, User, CheckCircle, Clock, MapPin, MessageSquare, Send, X } from "lucide-react";
+import { Calendar, Users, DollarSign, ArrowLeft, User, CheckCircle, Clock, MapPin, MessageSquare, Send, X } from "lucide-react";
 import { getRide } from "../utils/api";
 import { listBookings } from "../utils/api";
 import BookingModal from "../components/BookingModal";
@@ -425,4 +425,5 @@ export default function TripDetails() {
     </ErrorBoundary>
   );
 }
+
 
