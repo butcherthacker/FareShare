@@ -21,10 +21,14 @@ import {
   CreditCard,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  MessageSquare
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBookings } from "../hooks/useBookings";
+import { ReviewsList } from "../components/ReviewsList";
+import { ReviewFormModal } from "../components/ReviewFormModal";
+import { StarRating } from "../components/StarRating";
 import type { Booking, BookingStatus } from "../types";
 
 export default function Dashboard() {
@@ -43,6 +47,9 @@ export default function Dashboard() {
 
   // UI state
   const [role, setRole] = useState<"passenger" | "driver">("passenger");
+  const [activeTab, setActiveTab] = useState<"bookings" | "reviews">("bookings");
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
   // Fetch bookings on mount and when role changes
   useEffect(() => {
@@ -67,11 +74,23 @@ export default function Dashboard() {
   const avgAmount = totalBookings > 0 ? totalAmount / totalBookings : 0;
 
   /**
-   * Render star rating
+   * Handle opening review modal for a completed booking
    */
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating);
-    return "★".repeat(fullStars) + "☆".repeat(5 - fullStars);
+  const handleWriteReview = (booking: Booking) => {
+    setSelectedBookingForReview(booking);
+    setReviewModalOpen(true);
+  };
+
+  /**
+   * Handle review submission success
+   */
+  const handleReviewSuccess = () => {
+    setReviewModalOpen(false);
+    setSelectedBookingForReview(null);
+    // Optionally refresh bookings
+    if (user?.id) {
+      fetchMyBookings(role);
+    }
   };
 
   /**
@@ -129,7 +148,7 @@ export default function Dashboard() {
               </h1>
               {user && user.rating_count > 0 ? (
                 <div className="flex items-center gap-2 text-gray-600">
-                  <span className="text-lg text-yellow-500">{renderStars(user.rating_avg)}</span>
+                  <StarRating rating={user.rating_avg} readonly size="md" />
                   <span className="text-sm">
                     {user.rating_avg.toFixed(1)} • {user.rating_count} review{user.rating_count !== 1 ? "s" : ""}
                   </span>
@@ -210,7 +229,46 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Tab Navigation */}
+        <motion.div
+          className="bg-white rounded-2xl shadow-lg mb-6"
+          style={{ border: '1px solid var(--color-secondary)' }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <div className="flex border-b" style={{ borderColor: 'var(--color-secondary)' }}>
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`flex-1 px-6 py-4 font-semibold flex items-center justify-center gap-2 transition-colors ${
+                activeTab === "bookings" ? "border-b-2" : ""
+              }`}
+              style={{
+                color: activeTab === "bookings" ? 'var(--color-primary)' : '#718096',
+                borderColor: activeTab === "bookings" ? 'var(--color-primary)' : 'transparent'
+              }}
+            >
+              <CreditCard size={20} />
+              Bookings
+            </button>
+            <button
+              onClick={() => setActiveTab("reviews")}
+              className={`flex-1 px-6 py-4 font-semibold flex items-center justify-center gap-2 transition-colors ${
+                activeTab === "reviews" ? "border-b-2" : ""
+              }`}
+              style={{
+                color: activeTab === "reviews" ? 'var(--color-primary)' : '#718096',
+                borderColor: activeTab === "reviews" ? 'var(--color-primary)' : 'transparent'
+              }}
+            >
+              <MessageSquare size={20} />
+              Reviews ({user?.rating_count || 0})
+            </button>
+          </div>
+        </motion.div>
+
         {/* Bookings Section */}
+        {activeTab === "bookings" && (
         <motion.div 
           className="bg-white rounded-2xl shadow-lg p-6 md:p-8"
           style={{ border: '1px solid var(--color-secondary)' }}
@@ -369,6 +427,21 @@ export default function Dashboard() {
                             </motion.button>
                           </div>
                         )}
+
+                        {/* Write Review Button for completed bookings */}
+                        {booking.status === 'completed' && (
+                          <motion.button
+                            onClick={() => handleWriteReview(booking)}
+                            className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2"
+                            style={{ backgroundColor: 'var(--color-accent)' }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <MessageSquare size={16} />
+                            Write Review
+                          </motion.button>
+                        )}
+                        
                         {/* View Details link - always available when ride exists */}
                         {booking.ride && (
                           <div className="mt-3 text-right">
@@ -396,7 +469,53 @@ export default function Dashboard() {
             </div>
           )}
         </motion.div>
+        )}
+
+        {/* Reviews Section */}
+        {activeTab === "reviews" && user && (
+          <motion.div
+            className="bg-white rounded-2xl shadow-lg p-6 md:p-8"
+            style={{ border: '1px solid var(--color-secondary)' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <div className="mb-6">
+              <h2 className="text-xl md:text-2xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                My Reviews
+              </h2>
+              <p className="text-sm text-gray-600">
+                Reviews you've received from other users
+              </p>
+            </div>
+            <ReviewsList userId={user.id} />
+          </motion.div>
+        )}
       </div>
+
+      {/* Review Modal */}
+      {selectedBookingForReview && (
+        <ReviewFormModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedBookingForReview(null);
+          }}
+          rideId={selectedBookingForReview.ride_id}
+          revieweeId={
+            role === "passenger"
+              ? selectedBookingForReview.ride?.driver_id || ""
+              : selectedBookingForReview.passenger_id
+          }
+          revieweeName={
+            role === "passenger"
+              ? "the driver"
+              : selectedBookingForReview.passenger?.full_name || "the passenger"
+          }
+          onSuccess={handleReviewSuccess}
+        />
+      )}
     </div>
   );
 }
+
