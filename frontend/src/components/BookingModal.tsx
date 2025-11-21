@@ -78,9 +78,10 @@ export default function BookingModal({
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
+                    {/* Backdrop - raised zIndex so it sits above maps (Leaflet panes use high z-index) */}
                     <motion.div
-                        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                        className="fixed inset-0 bg-black bg-opacity-50"
+                        style={{ zIndex: 1090 }}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -89,7 +90,8 @@ export default function BookingModal({
 
                     {/* Modal */}
                     <motion.div
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 flex items-center justify-center p-4"
+                        style={{ zIndex: 1100 }}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}

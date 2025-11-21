@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   DollarSign, 
@@ -366,7 +367,7 @@ export default function Dashboard() {
                           <p className="text-xs text-gray-500 mt-1">Total</p>
                         </div>
 
-                        {/* Action Buttons */}
+                            {/* Action Buttons */}
                         {isActive && (
                           <div className="flex flex-col gap-2">
                             {/* Driver can confirm pending bookings */}
@@ -439,6 +440,17 @@ export default function Dashboard() {
                             <MessageSquare size={16} />
                             Write Review
                           </motion.button>
+                        {/* View Details link - always available when ride exists */}
+                        {booking.ride && (
+                          <div className="mt-3 text-right">
+                            <Link
+                              to={`/trip/${booking.ride.id}`}
+                              className="inline-block px-4 py-2 rounded-lg text-sm font-medium underline"
+                              style={{ color: 'var(--color-accent)' }}
+                            >
+                              View Details
+                            </Link>
+                          </div>
                         )}
                       </div>
                     </div>

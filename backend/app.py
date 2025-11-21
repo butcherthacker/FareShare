@@ -20,6 +20,13 @@ from src.models import User, Ride, Booking, Review
 from src.routes import auth_router, users_router, rides_router, booking_router, trip_summary # Trip summary routes
 from src.routes.reviews import router as reviews_router
 
+# Import admin routers (Sprint 3)
+from src.routes.auth import router as auth_router # Re-importing for admin
+from src.routes.admin_rides import router as admin_rides_router
+from src.routes.admin_reports import router as admin_reports_router
+from src.routes.admin_incidents import router as admin_incidents_router
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -90,6 +97,11 @@ app.include_router(trip_summary.router) # Trip summary routes (already has /api/
 from src.routes.geo import router as geo_router
 app.include_router(geo_router, prefix="/api")  # Geocoding routes
 
+# Include admin routers (Sprint 3)
+app.include_router(auth_router)  # Auth routes for admin
+app.include_router(admin_rides_router)
+app.include_router(admin_reports_router)
+app.include_router(admin_incidents_router)
 
 
 @app.get("/", tags=["Root"])

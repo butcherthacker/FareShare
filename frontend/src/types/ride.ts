@@ -139,6 +139,7 @@ export interface RideListResponse {
 /**
  * Lightweight ride shape returned by the search endpoint
  * This is intentionally smaller than the full `Ride` type
+ * Includes coordinates for map display on search results
  */
 export interface SearchResultRide {
     id: string;
@@ -149,6 +150,11 @@ export interface SearchResultRide {
     price: number;
     driver_rating?: number | null;
     ride_type?: string | null;
+    // Coordinates for map display
+    origin_lat?: number | null;
+    origin_lng?: number | null;
+    destination_lat?: number | null;
+    destination_lng?: number | null;
 }
 
 /**
