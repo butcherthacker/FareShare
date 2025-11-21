@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   MapPin, 
@@ -7,17 +6,15 @@ import {
   Users, 
   DollarSign, 
   Search,
-  ArrowRight,
-  Star,
   Loader2,
   AlertCircle,
   Filter,
-  CreditCard,
   MapPinned
 } from "lucide-react";
 import { searchRides } from "../utils/api";
 import { geocodeAddress } from "../utils/geocoding";
 import BookingModal from "../components/BookingModal";
+import { StarRating } from "../components/StarRating";
 import RideMap from "../components/RideMap";
 import type { SearchResultRide } from "../types";
 
@@ -218,21 +215,6 @@ export default function RidePostAndRequestPage() {
 
   function resetPagination() {
     setPage(1);
-  }
-
-  // Open booking modal for a specific ride
-  function handleBookRide(ride: Ride) {
-    const searchRide: SearchResultRide = {
-      id: ride.id,
-      from: ride.from,
-      to: ride.to,
-      depart_at: ride.depart_at,
-      seats_available: ride.seats_available,
-      price: ride.price,
-      driver_rating: ride.driver_rating,
-    };
-    setSelectedRideForBooking(searchRide);
-    setIsBookingModalOpen(true);
   }
 
   // Refresh search results after successful booking
@@ -473,37 +455,31 @@ export default function RidePostAndRequestPage() {
                     </div>
                     <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
                       <Users size={14} />
-                      Seats: {r.seats_available} • 
-                      <Star size={14} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
-                      Rating: {r.driver_rating?.toFixed(1) ?? "N/A"}
+                      Seats: {r.seats_available}
                     </div>
+                    {r.driver_rating && (
+                      <div className="text-sm flex items-center gap-1 mt-1">
+                        <StarRating rating={r.driver_rating} readonly size="sm" />
+                        <span style={{ color: '#718096' }}>({r.driver_rating.toFixed(1)})</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right flex flex-col items-end gap-2 ml-4">
-                    <div className="text-lg font-bold flex items-center gap-1 justify-end" style={{ color: 'var(--color-primary)' }}>
-                      <DollarSign size={18} />
-                      {r.price.toFixed(2)}
-                    </div>
-                    
-                    {/* Book Ride Button */}
-                    <motion.button
-                      onClick={() => handleBookRide(r)}
-                      className="px-4 py-2 rounded-lg text-white font-semibold text-sm flex items-center gap-2 transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: 'var(--color-accent)' }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <CreditCard size={16} />
-                      Book Now
-                    </motion.button>
-
-                    <Link 
-                      to={`/trip/${r.id}`} 
-                      className="text-sm underline flex items-center gap-1 justify-end transition-colors hover:opacity-80"
-                      style={{ color: 'var(--color-accent)' }}
-                    >
-                      View Details
-                      <ArrowRight size={14} />
-                    </Link>
+                  <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
+                    <Users size={14} />
+                    Seats: {r.seats_available}
+                  </div>
+                  <div className="text-sm flex items-center gap-2 mt-1">
+                    <span style={{ color: '#718096' }}>Driver:</span>
+                    {r.driver_rating ? (
+                      <>
+                        <StarRating rating={r.driver_rating} readonly size="sm" />
+                        <span className="text-xs" style={{ color: '#718096' }}>
+                          {r.driver_rating.toFixed(1)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs" style={{ color: '#718096' }}>No ratings yet</span>
+                    )}
                   </div>
                 </div>
 

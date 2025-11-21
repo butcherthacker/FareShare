@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { apiPatch, apiPost, API_BASE_URL } from "../utils/api";
+import { StarRating } from "../components/StarRating";
 import type { User } from "../types";
 
 interface UpdateProfileData {
@@ -266,11 +267,30 @@ export default function UserSettingsPage() {
                   {isLoading ? 'Uploading...' : 'Upload new photo'}
                 </button>
               </div>
-              <div className="flex-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InfoPill label={user.full_name} />
-                <InfoPill label={`Joined ${joinDate}`} />
-                {user.rating_count > 0 && (
-                  <InfoPill label={`⭐ ${user.rating_avg.toFixed(1)} (${user.rating_count} reviews)`} />
+              <div className="flex-1 space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <InfoPill label={user.full_name} />
+                  <InfoPill label={`Joined ${joinDate}`} />
+                </div>
+                {user.rating_count > 0 ? (
+                  <div className="bg-white rounded-lg px-4 py-3" style={{ border: '1px solid var(--color-secondary)' }}>
+                    <p className="text-sm text-gray-600 mb-2">Your Rating</p>
+                    <div className="flex items-center gap-3">
+                      <StarRating rating={user.rating_avg} readonly size="lg" />
+                      <div>
+                        <p className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>
+                          {user.rating_avg.toFixed(1)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {user.rating_count} review{user.rating_count !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg px-4 py-3" style={{ border: '1px solid var(--color-secondary)' }}>
+                    <p className="text-sm text-gray-600">No reviews yet</p>
+                  </div>
                 )}
                 {/* Vehicle info removed from user profile — shown on rides instead */}
               </div>

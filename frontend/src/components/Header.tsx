@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, LogOut, Car, Search, BarChart3 } from "lucide-react";
+import { Settings, LogOut, Car, Search, BarChart3, Shield } from "lucide-react";
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
@@ -150,6 +150,22 @@ const Header: React.FC = () => {
                                         >
                                             <BarChart3 size={16} />
                                             Dashboard
+                                        </motion.button>
+
+                                        <motion.button
+                                            onClick={() => user?.role === "admin" && (() => {
+                                                setShowDropdown(false);
+                                                navigate("/admin");
+                                            })()}
+                                            className="w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2"
+                                            style={{ color: '#4a5568' }}
+                                            whileHover={{ 
+                                                backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)',
+                                                color: 'var(--color-primary)'
+                                            }}
+                                        >
+                                            <Shield size={16} />
+                                            Admin Dashboard
                                         </motion.button>
 
                                         <motion.button
