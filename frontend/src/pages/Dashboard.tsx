@@ -440,6 +440,8 @@ export default function Dashboard() {
                             <MessageSquare size={16} />
                             Write Review
                           </motion.button>
+                        )}
+                        
                         {/* View Details link - always available when ride exists */}
                         {booking.ride && (
                           <div className="mt-3 text-right">
@@ -516,3 +518,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
