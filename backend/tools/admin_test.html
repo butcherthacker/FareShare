@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>FareShare Admin Dashboard (Backend)</title>
+
+    <style>
+        /* ============================
+           GLOBAL STYLES
+        ============================ */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", Arial, sans-serif;
+            background: #faedd7;
+        }
+
+        .page-wrap {
+            padding: 40px 60px;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        h1 {
+            font-size: 34px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: #4a4a4a;
+            margin-bottom: 20px;
+        }
+
+        /* Cyan testing badge */
+        .badge-cyan {
+            display: inline-block;
+            background: #d9f7ff;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #007c8a;
+            font-weight: 600;
+            margin-bottom: 30px;
+            border: 1.5px solid #9ce3ef;
+        }
+
+        /* ============================
+           CARDS
+        ============================ */
+        .card {
+            background: white;
+            padding: 25px;
+            border: 1.5px solid #f4dcc3;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 6px rgba(0, 170, 200, 0.08);
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 18px;
+            color: #1d1d1f;
+            border-left: 4px solid #00a8cc;
+            padding-left: 10px;
+        }
+
+        label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1.5px solid #f4dcc3;
+            font-size: 15px;
+            background: #fff;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00a8cc;
+            box-shadow: 0 0 8px rgba(0, 168, 204, 0.4);
+        }
+
+        button {
+            background: #f55e3b;
+            color: white;
+            border: none;
+            padding: 12px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        button:hover {
+            background: #df4f2f;
+            box-shadow: 0 0 6px rgba(0, 168, 204, 0.4);
+        }
+
+        /* ============================
+           TABS
+        ============================ */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e3d3c4;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 14px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #4a4a4a;
+            border-bottom: 3px solid transparent;
+            transition: 0.2s;
+        }
+
+        .tab:hover {
+            color: #00a8cc;
+        }
+
+        .tab.active {
+            color: #f55e3b;
+            font-weight: 700;
+            border-bottom: 3px solid #f55e3b;
+        }
+
+        /* ============================
+           RESULT CARDS
+        ============================ */
+        .result-card {
+            background: white;
+            border: 1.5px solid #f4dcc3;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 168, 204, 0.05);
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+        }
+
+        .result-line {
+            margin: 6px 0;
+            font-size: 15px;
+        }
+
+        /* ============================
+           DEBUG RAW OUTPUT
+        ============================ */
+        pre {
+            background: black;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-wrap">
+
+        <!-- HEADER -->
+        <h1>Admin Dashboard (Backend)</h1>
+        <div class="subtitle">Manage rides, view platform metrics, and review incidents</div>
+        <div class="badge-cyan">🔧 Testing Environment — Backend Connected</div>
+
+        <!-- LOGIN CARD -->
+        <div class="card">
+            <div class="card-title">Login</div>
+
+            <label>Email</label>
+            <input id="email" value="alice@test.example">
+
+            <label>Password</label>
+            <input id="password" type="password" value="Password123!">
+
+            <button onclick="login()">Login</button>
+
+            <p style="margin-top:15px; font-weight:600;">Token:</p>
+            <div id="tokenDisplay"
+                style="word-wrap:break-word; font-size:14px; color:#006b77; background:#d9f7ff; padding:10px; border-radius:8px; border:1px solid #9ce3ef;">
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="tabs">
+            <div class="tab active" id="tabOverview" onclick="switchTab('overview')">Overview</div>
+            <div class="tab" id="tabRides" onclick="switchTab('rides')">Rides</div>
+            <div class="tab" id="tabIncidents" onclick="switchTab('incidents')">Incidents</div>
+        </div>
+
+        <!-- CONTENT AREAS -->
+        <div id="overviewSection"></div>
+        <div id="ridesSection" style="display:none;"></div>
+        <div id="incidentsSection" style="display:none;"></div>
+
+        <!-- DEBUG OUTPUT -->
+        <pre id="output">Waiting for request...</pre>
+    </div>
+
+    <!-- ============================
+         JAVASCRIPT
+    ============================ -->
+    <script>
+        let token = null;
+        const BASE_URL = "http://127.0.0.1:8000";
+
+        function switchTab(tab) {
+            document.getElementById("tabOverview").classList.remove("active");
+            document.getElementById("tabRides").classList.remove("active");
+            document.getElementById("tabIncidents").classList.remove("active");
+
+            document.getElementById("overviewSection").style.display = "none";
+            document.getElementById("ridesSection").style.display = "none";
+            document.getElementById("incidentsSection").style.display = "none";
+
+            if (tab === "overview") {
+                document.getElementById("tabOverview").classList.add("active");
+                document.getElementById("overviewSection").style.display = "block";
+                loadOverview();
+            } else if (tab === "rides") {
+                document.getElementById("tabRides").classList.add("active");
+                document.getElementById("ridesSection").style.display = "block";
+                loadRides();
+            } else {
+                document.getElementById("tabIncidents").classList.add("active");
+                document.getElementById("incidentsSection").style.display = "block";
+                loadIncidents();
+            }
+        }
+
+        async function login() {
+            const response = await fetch(`${BASE_URL}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: document.getElementById("email").value,
+                    password: document.getElementById("password").value
+                })
+            });
+
+            const data = await response.json();
+            token = data.access_token;
+            document.getElementById("tokenDisplay").textContent = token;
+            document.getElementById("output").textContent = JSON.stringify(data, null, 4);
+        }
+
+        /* ---------------- OVERVIEW ---------------- */
+        async function loadOverview() {
+            const from = "2025-01-01";
+            const to = "2025-12-31";
+
+            const response = await fetch(`${BASE_URL}/admin/reports/usage?from_date=${from}&to_date=${to}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const data = await response.json();
+            document.getElementById("output").textContent = JSON.stringify(data, null, 4);
+            renderOverview(data);
+        }
+
+        function renderOverview(data) {
+            const container = document.getElementById("overviewSection");
+            container.innerHTML = "";
+
+            const card = document.createElement("div");
+            card.className = "result-card";
+
+            card.innerHTML = `
+                <div class="result-title">Platform Summary</div>
+                <div class="result-line"><strong>Total Rides:</strong> ${data.summary.rides_total}</div>
+                <div class="result-line"><strong>Total Bookings:</strong> ${data.summary.bookings_total}</div>
+                <div class="result-line"><strong>Active Drivers:</strong> ${data.summary.active_drivers}</div>
+                <div class="result-line"><strong>Active Riders:</strong> ${data.summary.active_riders}</div>
+            `;
+
+            container.appendChild(card);
+        }
+
+        /* ---------------- RIDES ---------------- */
+        async function loadRides() {
+            const response = await fetch(`${BASE_URL}/admin/rides`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const data = await response.json();
+            document.getElementById("output").textContent = JSON.stringify(data, null, 4);
+            renderRides(data.results);
+        }
+
+        function renderRides(rides) {
+            const container = document.getElementById("ridesSection");
+            container.innerHTML = "";
+
+            rides.forEach(ride => {
+                const card = document.createElement("div");
+                card.className = "result-card";
+                card.innerHTML = `
+                    <div class="result-title">${ride.origin_label} → ${ride.destination_label}</div>
+                    <div class="result-line"><strong>Driver:</strong> ${ride.driver.name}</div>
+                    <div class="result-line"><strong>Date:</strong> ${ride.departure_time}</div>
+                    <div class="result-line"><strong>Passengers:</strong> ${ride.passengers_count}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        /* ---------------- INCIDENTS ---------------- */
+        async function loadIncidents() {
+            const response = await fetch(`${BASE_URL}/admin/incidents`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const data = await response.json();
+            document.getElementById("output").textContent = JSON.stringify(data, null, 4);
+            renderIncidents(data.results);
+        }
+
+        function renderIncidents(incidents) {
+            const container = document.getElementById("incidentsSection");
+            container.innerHTML = "";
+
+            if (incidents.length === 0) {
+                container.innerHTML = `<p>No incidents reported.</p>`;
+                return;
+            }
+
+            incidents.forEach(i => {
+                const card = document.createElement("div");
+                card.className = "result-card";
+                card.innerHTML = `
+                    <div class="result-title">${i.type}</div>
+                    <div class="result-line">${i.description}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+    </script>
+
+</body>
+
+</html>
