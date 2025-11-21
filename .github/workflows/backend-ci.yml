@@ -50,6 +50,7 @@ jobs:
       - name: Set up environment variables
         run: |
           echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_fareshare" >> $GITHUB_ENV
+          echo "AUTO_CREATE_TABLES=true" >> $GITHUB_ENV
       
       - name: Create uploads directory
         run: |
