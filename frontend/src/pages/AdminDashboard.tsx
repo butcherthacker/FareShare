@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion,AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 
 import { 
@@ -185,6 +185,12 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  // Incident moderation states
+  const [expandedIncidentId, setExpandedIncidentId] = useState<string | null>(null);
+  const [reviewText, setReviewText] = useState("");
+  const [resolveText, setResolveText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   // ============================================================
   // API FUNCTIONS
@@ -412,10 +418,91 @@ const fetchIncidents = async (page: number) => {
     );
   };
 
+  const handleReviewSubmit = async (incidentId: string) => {
+  if (!reviewText.trim()) {
+    alert("Please enter review notes");
+    return;
+  }
+
+  setSubmitting(true);
+  try {
+    // TODO: Replace with actual API call when backend is ready
+    const response = await fetch(`${API_BASE_URL}/admin/incidents/${incidentId}/review`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "reviewed",
+        notes: reviewText
+      })
+    });
+
+    if (!response.ok) throw new Error("Failed to submit review");
+
+    // Update local state
+    setIncidents(incidents.map(inc => 
+      inc.incident_id === incidentId 
+        ? { ...inc, status: "reviewed" }
+        : inc
+    ));
+
+    // Reset form
+    setReviewText("");
+    setExpandedIncidentId(null);
+    alert("Review submitted successfully");
+  } catch (err: any) {
+    console.error("Error submitting review:", err);
+    alert("Failed to submit review: " + err.message);
+  } finally {
+    setSubmitting(false);
+  }
+};
+
+const handleResolveSubmit = async (incidentId: string) => {
+  if (!resolveText.trim()) {
+    alert("Please enter resolution notes");
+    return;
+  }
+
+  setSubmitting(true);
+  try {
+    // TODO: Replace with actual API call when backend is ready
+    const response = await fetch(`${API_BASE_URL}/admin/incidents/${incidentId}/resolve`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "resolved",
+        resolution: resolveText
+      })
+    });
+
+    if (!response.ok) throw new Error("Failed to resolve incident");
+
+    // Update local state
+    setIncidents(incidents.map(inc => 
+      inc.incident_id === incidentId 
+        ? { ...inc, status: "resolved" }
+        : inc
+    ));
+
+    // Reset form
+    setResolveText("");
+    setExpandedIncidentId(null);
+    alert("Incident resolved successfully");
+  } catch (err: any) {
+    console.error("Error resolving incident:", err);
+    alert("Failed to resolve incident: " + err.message);
+  } finally {
+    setSubmitting(false);
+  }
+};
 
 
-  
-  
 
   // ============================================================
   // RENDER
@@ -604,9 +691,17 @@ const fetchIncidents = async (page: number) => {
             <p className="text-red-800">{error}</p>
           </div>
         )}
+        {/* Overview Tab — Empty State */}
+        {!loading && activeTab === "overview" && (!usageData || usageData.buckets.length === 0) && (
+          <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+            <AlertTriangle size={48} className="mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Data Available</h3>
+            <p className="text-gray-600">There is no usage data for the selected date range.</p>
+          </div>
+        )}
 
         {/* Overview Tab */}
-        {!loading && activeTab === "overview" && usageData && (
+        {!loading && activeTab === "overview" && usageData && usageData.buckets.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -774,59 +869,67 @@ const fetchIncidents = async (page: number) => {
             transition={{ delay: 0.3 }}
             className="bg-white rounded-xl shadow-sm overflow-hidden"
           >
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Ride ID</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Route</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Driver</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Departure</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Passenger(s)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {rides.map((ride, index) => (
-                    <motion.tr
-                      key={ride.ride_id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 text-sm font-mono text-gray-900">{ride.ride_id}</td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={ride.status} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <MapPin size={14} className="text-gray-400" />
-                          <span className="text-gray-900 break-words max-w-[120px]">{ride.origin_label}</span>
-                          <span className="text-gray-400">→</span>
-                          <span className="text-gray-900 break-words max-w-[120px]">{ride.destination_label}</span>
-                        </div>
-                      </td>
-                      <td
-                        className="px-6 py-4 text-sm text-gray-900 cursor-pointer w-32"
-                        onClick={() => setShowName(!showName)}
+            {rides.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                <AlertTriangle size={48} className="mx-auto mb-4 text-gray-300" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Rides Found</h3>
+                <p className="text-gray-600">There are no rides for the selected filters.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Ride ID</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Route</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Driver</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Departure</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Passenger(s)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {rides.map((ride, index) => (
+                      <motion.tr
+                        key={ride.ride_id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="hover:bg-gray-50"
                       >
-                        {showName ? ride.driver.name : ride.driver.id}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Clock size={14} />
-                          {new Date(ride.departure_time).toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {ride.passengers_count == 1 ? "1 Passenger" : `${ride.passengers_count} Passengers`}
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <td className="px-6 py-4 text-sm font-mono text-gray-900">{ride.ride_id}</td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={ride.status} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin size={14} className="text-gray-400" />
+                            <span className="text-gray-900 break-words max-w-[120px]">{ride.origin_label}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="text-gray-900 break-words max-w-[120px]">{ride.destination_label}</span>
+                          </div>
+                        </td>
+                        <td
+                          className="px-6 py-4 text-sm text-gray-900 cursor-pointer w-32"
+                          onClick={() => setShowName(!showName)}
+                        >
+                          {showName ? ride.driver.name : ride.driver.id}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Clock size={14} />
+                            {new Date(ride.departure_time).toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {ride.passengers_count == 1 ? "1 Passenger" : `${ride.passengers_count} Passengers`}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Pagination */}
             <div className="px-6 py-4 border-t flex items-center justify-between">
@@ -881,54 +984,199 @@ const fetchIncidents = async (page: number) => {
             transition={{ delay: 0.3 }}
             className="space-y-4"
           >
-            {incidents.map((incident, index) => (
-              <motion.div
-                key={incident.incident_id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-xl shadow-sm p-6"
-              >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <AlertTriangle size={20} className="text-orange-600" />
-                      <h3 className="font-semibold text-gray-900">{incident.category.toUpperCase()}</h3>
-                      <StatusBadge status={incident.status} />
+            {incidents.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                <AlertTriangle size={48} className="mx-auto mb-4 text-gray-300" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Incidents Found</h3>
+                <p className="text-gray-600">There are no incidents in the selected date range.</p>
+              </div>
+            ) : (
+              incidents.map((incident, index) => {
+                const isExpanded = expandedIncidentId === incident.incident_id;
+                
+                return (
+                  <motion.div
+                    key={incident.incident_id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-white rounded-xl shadow-sm overflow-hidden"
+                  >
+                    <div className="p-6">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <AlertTriangle size={20} className="text-orange-600" />
+                            <h3 className="font-semibold text-gray-900">{incident.category.toUpperCase()}</h3>
+                            <StatusBadge status={incident.status} />
+                          </div>
+                          
+                          <p className="text-gray-700 mb-4">{incident.summary}</p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                            <div>
+                              <span className="font-medium">Reported by:</span> {incident.user.name}
+                            </div>
+                            <div>
+                              <span className="font-medium">Ride ID:</span> {incident.ride_id}
+                            </div>
+                            <div>
+                              <span className="font-medium">Reported:</span> {new Date(incident.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          {incident.status === "open" && (
+                            <>
+                              <motion.button
+                                onClick={() => {
+                                  setExpandedIncidentId(isExpanded ? null : incident.incident_id);
+                                  setReviewText("");
+                                  setResolveText("");
+                                }}
+                                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                {isExpanded ? "Cancel" : "Review"}
+                              </motion.button>
+                              <motion.button
+                                onClick={() => {
+                                  setExpandedIncidentId(isExpanded && expandedIncidentId === incident.incident_id ? null : incident.incident_id);
+                                  setReviewText("");
+                                  setResolveText("");
+                                }}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                Resolve
+                              </motion.button>
+                            </>
+                          )}
+                          
+                          {incident.status === "reviewed" && (
+                            <motion.button
+                              onClick={() => {
+                                setExpandedIncidentId(isExpanded ? null : incident.incident_id);
+                                setReviewText("");
+                                setResolveText("");
+                              }}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              Resolve
+                            </motion.button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    
-                    <p className="text-gray-700 mb-4">{incident.summary}</p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">Reported by:</span> {incident.user.name}
-                      </div>
-                      <div>
-                        <span className="font-medium">Ride ID:</span> {incident.ride_id}
-                      </div>
-                      <div>
-                        <span className="font-medium">Reported:</span> {new Date(incident.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    {incident.status === "open" && (
-                      <>
-                        <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm">
-                          Review
-                        </button>
-                        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
-                          Resolve
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
 
-            {/* Pagination */}
+                    {/* Expandable Review/Resolve Form */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="border-t"
+                          style={{ borderTopColor: 'var(--color-secondary)' }}
+                        >
+                          <div className="p-6 bg-gray-50">
+                            {/* Review Form */}
+                            {incident.status === "open" && (
+                              <div className="space-y-4">
+                                <div>
+                                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Review Notes
+                                  </label>
+                                  <textarea
+                                    value={reviewText}
+                                    onChange={(e) => setReviewText(e.target.value)}
+                                    placeholder="Enter your review notes here... Document your findings, any actions taken, and next steps."
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                                    rows={4}
+                                    style={{ border: '1px solid var(--color-secondary)' }}
+                                  />
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-gray-500">
+                                    This will mark the incident as "Reviewed" and notify relevant parties.
+                                  </p>
+                                  <motion.button
+                                    onClick={() => handleReviewSubmit(incident.incident_id)}
+                                    disabled={submitting || !reviewText.trim()}
+                                    className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    whileHover={{ scale: submitting ? 1 : 1.05 }}
+                                    whileTap={{ scale: submitting ? 1 : 0.95 }}
+                                  >
+                                    {submitting ? (
+                                      <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Submitting...
+                                      </>
+                                    ) : (
+                                      "Submit Review"
+                                    )}
+                                  </motion.button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Resolve Form */}
+                            {(incident.status === "open" || incident.status === "reviewed") && (
+                              <div className="space-y-4">
+                                <div>
+                                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Resolution Notes
+                                  </label>
+                                  <textarea
+                                    value={resolveText}
+                                    onChange={(e) => setResolveText(e.target.value)}
+                                    placeholder="Enter resolution details... Describe how the incident was resolved and any final actions taken."
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    rows={4}
+                                    style={{ border: '1px solid var(--color-secondary)' }}
+                                  />
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-gray-500">
+                                    This will mark the incident as "Resolved" and close the case.
+                                  </p>
+                                  <motion.button
+                                    onClick={() => handleResolveSubmit(incident.incident_id)}
+                                    disabled={submitting || !resolveText.trim()}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    whileHover={{ scale: submitting ? 1 : 1.05 }}
+                                    whileTap={{ scale: submitting ? 1 : 0.95 }}
+                                  >
+                                    {submitting ? (
+                                      <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Submitting...
+                                      </>
+                                    ) : (
+                                      "Resolve Incident"
+                                    )}
+                                  </motion.button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })
+            )}
+
+            {/* Pagination - same as before */}
             <div className="bg-white rounded-xl shadow-sm px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <p className="text-sm text-gray-600">
@@ -940,7 +1188,7 @@ const fetchIncidents = async (page: number) => {
                     value={itemsPerPage}
                     onChange={(e) => {
                       setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1); // Reset to first page when changing items per page
+                      setCurrentPage(1);
                     }}
                     className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
