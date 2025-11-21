@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   MapPin, 
@@ -7,11 +6,9 @@ import {
   Users, 
   DollarSign, 
   Search,
-  ArrowRight,
   Loader2,
   AlertCircle,
   Filter,
-  CreditCard,
   MapPinned
 } from "lucide-react";
 import { searchRides } from "../utils/api";
@@ -218,21 +215,6 @@ export default function RidePostAndRequestPage() {
 
   function resetPagination() {
     setPage(1);
-  }
-
-  // Open booking modal for a specific ride
-  function handleBookRide(ride: Ride) {
-    const searchRide: SearchResultRide = {
-      id: ride.id,
-      from: ride.from,
-      to: ride.to,
-      depart_at: ride.depart_at,
-      seats_available: ride.seats_available,
-      price: ride.price,
-      driver_rating: ride.driver_rating,
-    };
-    setSelectedRideForBooking(searchRide);
-    setIsBookingModalOpen(true);
   }
 
   // Refresh search results after successful booking
@@ -473,10 +455,14 @@ export default function RidePostAndRequestPage() {
                     </div>
                     <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
                       <Users size={14} />
-                      Seats: {r.seats_available} • 
-                      <Star size={14} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
-                      Rating: {r.driver_rating?.toFixed(1) ?? "N/A"}
+                      Seats: {r.seats_available}
                     </div>
+                    {r.driver_rating && (
+                      <div className="text-sm flex items-center gap-1 mt-1">
+                        <StarRating rating={r.driver_rating} readonly size="sm" />
+                        <span style={{ color: '#718096' }}>({r.driver_rating.toFixed(1)})</span>
+                      </div>
+                    )}
                   </div>
                   <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
                     <Users size={14} />
