@@ -8,7 +8,6 @@ import {
   DollarSign, 
   Search,
   ArrowRight,
-  Star,
   Loader2,
   AlertCircle,
   Filter,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { searchRides } from "../utils/api";
 import BookingModal from "../components/BookingModal";
+import { StarRating } from "../components/StarRating";
 import type { SearchResultRide } from "../types";
 
 type Ride = {
@@ -333,9 +333,20 @@ export default function RidePostAndRequestPage() {
                   </div>
                   <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
                     <Users size={14} />
-                    Seats: {r.seats_available} • 
-                    <Star size={14} style={{ fill: 'var(--color-secondary)', color: 'var(--color-secondary)' }} />
-                    Rating: {r.driver_rating?.toFixed(1) ?? "N/A"}
+                    Seats: {r.seats_available}
+                  </div>
+                  <div className="text-sm flex items-center gap-2 mt-1">
+                    <span style={{ color: '#718096' }}>Driver:</span>
+                    {r.driver_rating ? (
+                      <>
+                        <StarRating rating={r.driver_rating} readonly size="sm" />
+                        <span className="text-xs" style={{ color: '#718096' }}>
+                          {r.driver_rating.toFixed(1)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs" style={{ color: '#718096' }}>No ratings yet</span>
+                    )}
                   </div>
                 </div>
                 <div className="text-right flex flex-col items-end gap-2">

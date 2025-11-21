@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, Users, DollarSign, Star, ArrowLeft, User, CheckCircle, Clock } from "lucide-react";
+import { Calendar, Users, DollarSign, ArrowLeft, User, CheckCircle, Clock } from "lucide-react";
 import { getRide } from "../utils/api";
 import { listBookings } from "../utils/api";
 import BookingModal from "../components/BookingModal";
 import ErrorBoundary from "../components/ErrorBoundary";
+import { StarRating } from "../components/StarRating";
 import type { Ride } from "../types/ride";
 import type { SearchResultRide } from "../types";
 import type { Booking } from "../types/booking";
@@ -181,12 +182,21 @@ export default function TripDetails() {
                 </div>
                 {ride.driver && (
                   <div className="mt-4 text-sm text-gray-700 text-left">
-                    <div className="font-semibold">Driver</div>
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="font-semibold mb-3">Driver</div>
+                    <div className="flex items-center gap-3">
                       <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#f3f4f6' }} />
                       <div>
                         <div className="font-medium">{ride.driver.full_name}</div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1"><Star size={12} /> {ride.driver.rating_avg?.toFixed(1) ?? 'N/A'}</div>
+                        {ride.driver.rating_avg > 0 ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <StarRating rating={ride.driver.rating_avg} readonly size="sm" />
+                            <span className="text-xs text-gray-500">
+                              {ride.driver.rating_avg.toFixed(1)} ({ride.driver.rating_count || 0})
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500 mt-1">No ratings yet</div>
+                        )}
                       </div>
                     </div>
                   </div>
