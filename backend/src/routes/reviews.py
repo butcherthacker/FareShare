@@ -20,7 +20,7 @@ from src.schemas.review import (
     ReviewWithReviewer,
     PaginatedReviewsResponse
 )
-from src.schemas.auth import get_current_user
+from src.auth import get_current_user
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
