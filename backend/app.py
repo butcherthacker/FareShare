@@ -96,6 +96,8 @@ app.include_router(reviews_router, prefix="/api")
 app.include_router(trip_summary.router) # Trip summary routes (already has /api/trips prefix)
 from src.routes.geo import router as geo_router
 app.include_router(geo_router, prefix="/api")  # Geocoding routes
+from src.routes.messages import router as messages_router
+app.include_router(messages_router)  # Messaging routes (already has /api/messages prefix)
 
 # Include admin routers (Sprint 3)
 app.include_router(auth_router)  # Auth routes for admin

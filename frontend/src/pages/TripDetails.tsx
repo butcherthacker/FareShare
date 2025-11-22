@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, Users, DollarSign, ArrowLeft, User, CheckCircle, Clock, MapPin } from "lucide-react";
+import { Calendar, Users, DollarSign, ArrowLeft, User, CheckCircle, Clock, MapPin, MessageSquare, Send, X } from "lucide-react";
 import { getRide } from "../utils/api";
 import { listBookings } from "../utils/api";
 import BookingModal from "../components/BookingModal";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { StarRating } from "../components/StarRating";
 import RideMap from "../components/RideMap";
+import { useMessages } from "../hooks/useMessages";
+import { useAuth } from "../hooks/useAuth";
 import type { Ride } from "../types/ride";
 import type { SearchResultRide } from "../types";
 import type { Booking } from "../types/booking";
@@ -21,6 +23,14 @@ export default function TripDetails() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
+
+  // Messaging state
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState<{ id: any; name: string; role: string } | null>(null);
+  const [messageText, setMessageText] = useState("");
+
+  const { sendMessage, loading: sendingMessage, error: messageError, clearError } = useMessages();
+  const { isAuthenticated } = useAuth();
 
   function formatApiError(err: any): string {
     if (!err) return 'Unknown error';
@@ -106,6 +116,40 @@ export default function TripDetails() {
       cancelled = true;
     };
   }, [id]);
+
+  // Handle opening message modal
+  const handleOpenMessage = (recipient: { id: any; name: string; role: string }) => {
+    console.log('handleOpenMessage called with:', recipient);
+    setSelectedRecipient(recipient);
+    setMessageText("");
+    clearError();
+    setShowMessageModal(true);
+  };
+
+  // Handle sending message
+  const handleSendMessage = async () => {
+    if (!selectedRecipient || !messageText.trim() || !id) return;
+
+    console.log('Selected recipient:', selectedRecipient);
+    console.log('Selected recipient ID:', selectedRecipient.id, 'type:', typeof selectedRecipient.id);
+
+    const response = await sendMessage(
+      selectedRecipient.id.toString(),
+      messageText.trim(),
+      id // Pass ride ID as string (UUID)
+    );
+
+    if (response) {
+      // Success
+      setMessageText("");
+      setShowMessageModal(false);
+      setSelectedRecipient(null);
+      alert(`Message sent to ${selectedRecipient.name}!`);
+    } else {
+      // Error - error state is already set in the hook
+      // The error will be displayed in the modal
+    }
+  };
 
   // Convert full Ride into the lightweight shape BookingModal expects
   function toSearchRide(r: Ride | null): SearchResultRide | null {
@@ -249,18 +293,38 @@ export default function TripDetails() {
                 </div>
 
                 <ul className="space-y-3">
-                  {bookings.map((b) => (
-                    <li key={b.id} className="flex items-center gap-3 p-3 rounded" style={{ backgroundColor: 'rgba(var(--color-primary-rgb),0.03)' }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#fff' }} className="flex items-center justify-center border">
-                        <User size={20} className="text-gray-400" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{b.passenger?.full_name ?? 'Guest'}</div>
-                        <div className="text-xs text-gray-500">{b.seats_reserved} seat{b.seats_reserved>1?'s':''} • {b.status}</div>
-                      </div>
-                      <div className="text-sm text-gray-500">{b.booked_at ? new Date(b.booked_at).toLocaleString() : ''}</div>
-                    </li>
-                  ))}
+                  {bookings.map((b) => {
+                    return (
+                      <li key={b.id} className="flex items-center gap-3 p-3 rounded" style={{ backgroundColor: 'rgba(var(--color-primary-rgb),0.03)' }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#fff' }} className="flex items-center justify-center border">
+                          <User size={20} className="text-gray-400" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">{b.passenger?.full_name ?? 'Guest'}</div>
+                          <div className="text-xs text-gray-500">{b.seats_reserved} seat{b.seats_reserved>1?'s':''} • {b.status}</div>
+                        </div>
+                        <div className="text-sm text-gray-500">{b.booked_at ? new Date(b.booked_at).toLocaleString() : ''}</div>
+                        {isAuthenticated && b.passenger && (
+                          <button
+                            onClick={() => handleOpenMessage({
+                              id: b.passenger!.id,
+                              name: b.passenger!.full_name || 'Guest',
+                              role: 'Passenger'
+                            })}
+                            className="px-3 py-1 text-sm rounded flex items-center gap-1 hover:opacity-90 transition-opacity"
+                            style={{ 
+                              backgroundColor: 'var(--color-primary)', 
+                              color: 'white'
+                            }}
+                            title="Send message"
+                          >
+                            <MessageSquare size={14} />
+                            Message
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -275,7 +339,91 @@ export default function TripDetails() {
         onSuccess={() => setIsBookingOpen(false)}
       />
       </div>
+
+      {/* Message Modal - Outside main container for proper overlay */}
+      {showMessageModal && selectedRecipient && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ 
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9999
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 relative">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>
+                Send Message to {selectedRecipient.name}
+              </h3>
+              <button
+                onClick={() => setShowMessageModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                <strong>Role:</strong> {selectedRecipient.role}
+              </p>
+              <p className="text-xs text-gray-500">
+                Your message will be sent via email. User email addresses are kept private.
+              </p>
+            </div>
+
+            <textarea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder="Type your message here..."
+              className="w-full px-4 py-3 border rounded-lg resize-none focus:outline-none focus:ring-2"
+              style={{ 
+                borderColor: 'var(--color-secondary)',
+                minHeight: '150px'
+              }}
+              maxLength={500}
+            />
+            <div className="text-xs text-gray-500 text-right mt-1">
+              {messageText.length} / 500 characters
+            </div>
+
+            {messageError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                {messageError}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowMessageModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg font-semibold hover:opacity-90"
+                style={{ 
+                  border: '1px solid var(--color-secondary)',
+                  color: 'var(--color-primary)'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendMessage}
+                disabled={!messageText.trim() || sendingMessage}
+                className="flex-1 px-4 py-2 rounded-lg font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                {sendingMessage ? (
+                  'Sending...'
+                ) : (
+                  <>
+                    <Send size={16} />
+                    Send Message
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ErrorBoundary>
   );
 }
+
 

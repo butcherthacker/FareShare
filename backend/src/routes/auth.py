@@ -25,10 +25,16 @@ from src.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     VERIFICATION_TOKEN_EXPIRE_HOURS
 )
+from pydantic import BaseModel, EmailStr
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+class ResendVerificationRequest(BaseModel):
+    """Payload for requesting a new verification email without authentication."""
+    email: EmailStr
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -265,6 +271,50 @@ async def resend_verification_email(
         "message": "Verification email sent",
         "status": "success"
     }
+
+
+@router.post("/resend-verification-email")
+async def resend_verification_email_public(
+    payload: ResendVerificationRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """Allow users to request a new verification email by providing their email address."""
+    result = await db.execute(
+        select(User).where(User.email == payload.email.lower())
+    )
+    user = result.scalar_one_or_none()
+
+    # Always respond with success to avoid revealing account existence
+    generic_response = {
+        "message": "If an account with that email exists, a verification email has been sent.",
+        "status": "queued"
+    }
+
+    if not user:
+        return generic_response
+
+    if user.verification_status == "verified":
+        return {
+            "message": "This email has already been verified. You can sign in now.",
+            "status": "already_verified"
+        }
+
+    verification_token = create_verification_token(
+        user_id=str(user.id),
+        email=user.email
+    )
+
+    background_tasks.add_task(
+        send_verification_email,
+        email=user.email,
+        full_name=user.full_name,
+        verification_token=verification_token
+    )
+
+    logger.info(f"Public verification email resent to: {user.email}")
+
+    return generic_response
 
 
 @router.get("/me", response_model=UserResponse)

@@ -10,6 +10,7 @@ import UserSettingsPage from "./pages/UserSettingsPage";
 import Ridesearch from "./pages/Ridesearch";
 import Dashboard from "./pages/Dashboard";
 import TripDetails from "./pages/TripDetails";
+import VerifyEmail from "./pages/VerifyEmail";
 import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/trip/:id" element={<TripDetails />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<UserSettingsPage />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </Router>
