@@ -6,8 +6,8 @@ Ride sharing app
 
 ### Prerequisites
 
-- Python 3.8+ (the script will automatically create a virtual environment)
-- Node.js 16+
+- [Python 3.8+](https://www.python.org/downloads/) (the script will automatically create a virtual environment)
+- [Node.js 16+](https://nodejs.org/en/download)
 - npm or yarn
 
 ### Installation
@@ -18,6 +18,7 @@ git clone https://github.com/Flapjacck/FareShare.git
 cd FareShare
 
 # One-time setup (installs npm dependencies for root and frontend)
+npm install
 npm run setup
 ```
 
@@ -99,3 +100,4 @@ git push
 ```
 
 7. Repeat from step 1 after pushing your changes so you can make future changes.
+
