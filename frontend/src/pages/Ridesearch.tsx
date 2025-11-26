@@ -12,6 +12,7 @@ import {
   MapPinned
 } from "lucide-react";
 import { searchRides } from "../utils/api";
+import { Link } from "react-router-dom";
 import { geocodeAddress } from "../utils/geocoding";
 import BookingModal from "../components/BookingModal";
 import { StarRating } from "../components/StarRating";
@@ -464,22 +465,44 @@ export default function RidePostAndRequestPage() {
                       </div>
                     )}
                   </div>
-                  <div className="text-sm flex items-center gap-2 mt-1" style={{ color: '#718096' }}>
-                    <Users size={14} />
-                    Seats: {r.seats_available}
-                  </div>
-                  <div className="text-sm flex items-center gap-2 mt-1">
-                    <span style={{ color: '#718096' }}>Driver:</span>
-                    {r.driver_rating ? (
-                      <>
-                        <StarRating rating={r.driver_rating} readonly size="sm" />
-                        <span className="text-xs" style={{ color: '#718096' }}>
-                          {r.driver_rating.toFixed(1)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-xs" style={{ color: '#718096' }}>No ratings yet</span>
-                    )}
+                  {/* Right-side compact actions: price, view details, book
+                      Removed duplicate 'Seats' and duplicate driver rating which are already
+                      shown on the left. Kept UI changes minimal while adding navigation. */}
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="text-2xl font-bold flex items-center gap-1" style={{ color: 'var(--color-accent)' }}>
+                      <DollarSign size={18} />
+                      {(typeof r.price === 'number' ? r.price : Number(r.price || 0)).toFixed(2)}
+                    </div>
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/trip/${r.id}`}
+                        className="px-3 py-1 rounded text-sm"
+                        style={{ border: '1px solid var(--color-secondary)', color: 'var(--color-primary)' }}
+                        title="View ride details"
+                      >
+                        View details
+                      </Link>
+                      <button
+                        onClick={() => {
+                          // Prepare the lightweight ride object BookingModal expects
+                          setSelectedRideForBooking({
+                            id: r.id,
+                            from: r.from,
+                            to: r.to,
+                            depart_at: r.depart_at,
+                            seats_available: r.seats_available,
+                            price: r.price,
+                            driver_rating: r.driver_rating,
+                          } as SearchResultRide);
+                          setIsBookingModalOpen(true);
+                        }}
+                        className="px-3 py-1 rounded text-white font-semibold"
+                        style={{ backgroundColor: 'var(--color-primary)' }}
+                        title="Book this ride"
+                      >
+                        Book
+                      </button>
+                    </div>
                   </div>
                 </div>
 
