@@ -7,6 +7,7 @@ import BookingModal from "../components/BookingModal";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { StarRating } from "../components/StarRating";
 import RideMap from "../components/RideMap";
+import Background from "../components/Background";
 import { useMessages } from "../hooks/useMessages";
 import { useAuth } from "../hooks/useAuth";
 import type { Ride } from "../types/ride";
@@ -168,7 +169,9 @@ export default function TripDetails() {
 
   return (
     <ErrorBoundary>
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="overflow-y-auto p-6" style={{ height: 'calc(100vh - 80px)' }}>
+        <Background />
+        <div className="max-w-4xl mx-auto">
         <div className="mb-4">
         <Link to="/ridesearch" className="text-sm flex items-center gap-2" style={{ color: 'var(--color-accent)'}}>
           <ArrowLeft size={14} /> Back to search
@@ -183,7 +186,7 @@ export default function TripDetails() {
       )}
 
       {ride && (
-        <div className="bg-white p-6 rounded shadow" style={{ border: '1px solid var(--color-secondary)'}}>
+        <div className="rounded-lg p-6 shadow" style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)'}}>
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div className="flex-1">
               <h1 className="text-2xl font-bold" style={{ color: 'var(--color-primary)'}}>
@@ -338,6 +341,7 @@ export default function TripDetails() {
         onClose={() => setIsBookingOpen(false)}
         onSuccess={() => setIsBookingOpen(false)}
       />
+        </div>
       </div>
 
       {/* Message Modal - Outside main container for proper overlay */}
@@ -349,7 +353,7 @@ export default function TripDetails() {
             zIndex: 9999
           }}
         >
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 relative">
+          <div className="rounded-lg shadow-xl max-w-lg w-full p-6 relative" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>
                 Send Message to {selectedRecipient.name}

@@ -17,6 +17,7 @@ import { geocodeAddress } from "../utils/geocoding";
 import BookingModal from "../components/BookingModal";
 import { StarRating } from "../components/StarRating";
 import RideMap from "../components/RideMap";
+import Background from "../components/Background";
 import type { SearchResultRide } from "../types";
 
 type Ride = {
@@ -173,7 +174,7 @@ export default function RidePostAndRequestPage() {
           seats: seats || undefined,
           max_price: maxPrice === "" ? undefined : maxPrice,
           page,
-          page_size: 10,
+          page_size: 6,
         };
 
         const data = await searchRides(params as any);
@@ -224,12 +225,13 @@ export default function RidePostAndRequestPage() {
   }
 
   return (
-    <div className="overflow-y-auto p-4" style={{ height: 'calc(100vh - 80px)', backgroundColor: 'var(--color-background-warm)' }}>
+    <div className="overflow-y-auto p-4" style={{ height: 'calc(100vh - 80px)' }}>
+      <Background />
       <div className="max-w-5xl mx-auto">
         {/* Search area */}
         <motion.div 
           className="p-4 rounded mb-4" 
-          style={{ backgroundColor: 'white', border: '1px solid var(--color-secondary)' }}
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', border: '1px solid var(--color-secondary)', backdropFilter: 'blur(8px)' }}
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -366,8 +368,8 @@ export default function RidePostAndRequestPage() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           {/* Top pagination (Prev / Next) */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm flex items-center gap-2" style={{ color: '#718096' }}>
+          <div className="flex items-center justify-between mb-3 p-2 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)' }}>
+            <div className="text-sm flex items-center gap-2" style={{ color: '#4a5568', fontWeight: '500' }}>
               <Filter size={14} style={{ color: 'var(--color-accent)' }} />
               Page {page} of {totalPages}
             </div>
@@ -375,11 +377,12 @@ export default function RidePostAndRequestPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p-1))}
                 disabled={page <= 1}
-                className="px-2 py-1 rounded disabled:opacity-50 transition-opacity hover:opacity-90"
+                className="px-3 py-1.5 rounded font-medium disabled:opacity-50 transition-all hover:opacity-90"
                 style={{
                   border: '1px solid var(--color-secondary)',
-                  backgroundColor: 'white',
-                  color: 'var(--color-primary)'
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  color: 'var(--color-primary)',
+                  fontWeight: '600'
                 }}
               >
                 Prev
@@ -387,11 +390,12 @@ export default function RidePostAndRequestPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p+1))}
                 disabled={page >= totalPages}
-                className="px-2 py-1 rounded disabled:opacity-50 transition-opacity hover:opacity-90"
+                className="px-3 py-1.5 rounded font-medium disabled:opacity-50 transition-all hover:opacity-90"
                 style={{
                   border: '1px solid var(--color-secondary)',
-                  backgroundColor: 'white',
-                  color: 'var(--color-primary)'
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  color: 'var(--color-primary)',
+                  fontWeight: '600'
                 }}
               >
                 Next
@@ -526,12 +530,13 @@ export default function RidePostAndRequestPage() {
 
         {/* Pagination */}
         <motion.div 
-          className="flex items-center justify-between"
+          className="flex items-center justify-between p-2 rounded-lg"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)' }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <div className="text-sm flex items-center gap-2" style={{ color: '#718096' }}>
+          <div className="text-sm flex items-center gap-2" style={{ color: '#4a5568', fontWeight: '500' }}>
             <Filter size={14} style={{ color: 'var(--color-accent)' }} />
             Page {page} of {totalPages}
           </div>
@@ -539,11 +544,12 @@ export default function RidePostAndRequestPage() {
             <motion.button 
               onClick={() => setPage(p => Math.max(1, p-1))} 
               disabled={page <= 1} 
-              className="px-3 py-1 rounded disabled:opacity-50 transition-opacity hover:opacity-90"
+              className="px-3 py-1.5 rounded font-medium disabled:opacity-50 transition-all hover:opacity-90"
               style={{ 
                 border: '1px solid var(--color-secondary)',
-                backgroundColor: 'white',
-                color: 'var(--color-primary)'
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                color: 'var(--color-primary)',
+                fontWeight: '600'
               }}
               whileHover={{ scale: page > 1 ? 1.05 : 1 }}
               whileTap={{ scale: page > 1 ? 0.95 : 1 }}
@@ -553,11 +559,12 @@ export default function RidePostAndRequestPage() {
             <motion.button 
               onClick={() => setPage(p => Math.min(totalPages, p+1))} 
               disabled={page >= totalPages} 
-              className="px-3 py-1 rounded disabled:opacity-50 transition-opacity hover:opacity-90"
+              className="px-3 py-1.5 rounded font-medium disabled:opacity-50 transition-all hover:opacity-90"
               style={{ 
                 border: '1px solid var(--color-secondary)',
-                backgroundColor: 'white',
-                color: 'var(--color-primary)'
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                color: 'var(--color-primary)',
+                fontWeight: '600'
               }}
               whileHover={{ scale: page < totalPages ? 1.05 : 1 }}
               whileTap={{ scale: page < totalPages ? 0.95 : 1 }}

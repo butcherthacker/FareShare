@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion,AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
+import Background from "../components/Background";
 
 import { 
   BarChart3,
@@ -509,7 +510,8 @@ const handleResolveSubmit = async (incidentId: string) => {
   // ============================================================
   
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8" style={{ backgroundColor: 'var(--color-background-warm)' }}>
+    <div className="min-h-screen p-4 md:p-8">
+      <Background />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
