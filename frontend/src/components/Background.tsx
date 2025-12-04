@@ -193,8 +193,8 @@ const Background: React.FC<BackgroundProps> = ({ className = '' }) => {
         </div>
 
         {/* Building 3 */}
-        <div style={{ position: 'absolute', bottom: '0', left: '4%', transform: 'translateX(140%)', width: '250px', height: '250px' }}>
-          <div style={{ position: 'absolute', bottom: '0', width: '100%', height: '150px', background: 'linear-gradient(#70b7ea 80%, #3e78bb)', border: '4px solid #3e78bb', borderRadius: '9px 9px 0 0' }}></div>
+        <div style={{ position: 'absolute', bottom: '+4px', left: '4%', transform: 'translateX(140%)', width: '250px', height: '250px' }}>
+          <div style={{ position: 'absolute', bottom: '-4px', width: '100%', height: '150px', background: 'linear-gradient(#70b7ea 80%, #3e78bb)', border: '4px solid #3e78bb', borderRadius: '9px 9px 0 0' }}></div>
           <div style={{ position: 'absolute', top: '32%', left: '40%', width: '2%', height: '170px', background: '#3e78bb' }}></div>
           <div style={{ position: 'absolute', top: '32%', left: '70%', width: '2%', height: '170px', background: '#3e78bb' }}></div>
           <div style={{ position: 'absolute', top: '53%', left: '5', width: '100%', height: '30px', background: '#3f8ee9', border: '4px solid #3e78bb' }}></div>
