@@ -80,8 +80,8 @@ export default function BookingModal({
                 <>
                     {/* Backdrop - raised zIndex so it sits above maps (Leaflet panes use high z-index) */}
                     <motion.div
-                        className="fixed inset-0 bg-black bg-opacity-50"
-                        style={{ zIndex: 1090 }}
+                        className="fixed inset-0"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1090 }}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
