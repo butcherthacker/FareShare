@@ -28,6 +28,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useBookings } from "../hooks/useBookings";
 import { ReviewsList } from "../components/ReviewsList";
 import { ReviewFormModal } from "../components/ReviewFormModal";
+import Background from "../components/Background";
 import { StarRating } from "../components/StarRating";
 import type { Booking, BookingStatus } from "../types";
 
@@ -98,7 +99,8 @@ export default function Dashboard() {
    */
   if (bookingsLoading && bookings.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background-warm)' }}>
+      <div className="min-h-screen flex items-center justify-center">
+        <Background />
         <div className="flex items-center gap-3" style={{ color: 'var(--color-primary)' }}>
           <Loader2 size={24} className="animate-spin" />
           <span className="text-lg">Loading dashboard...</span>
@@ -112,7 +114,8 @@ export default function Dashboard() {
    */
   if (bookingsError && bookings.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--color-background-warm)' }}>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Background />
         <motion.div 
           className="max-w-md p-6 rounded-lg bg-white flex items-start gap-3"
           style={{ border: '1px solid var(--color-secondary)' }}
@@ -130,7 +133,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8" style={{ backgroundColor: 'var(--color-background-warm)' }}>
+    <div className="min-h-screen p-4 md:p-8">
+      <Background />
       <div className="max-w-6xl mx-auto">
         {/* Header Card */}
         <motion.div 

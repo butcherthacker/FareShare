@@ -23,6 +23,7 @@ import { useRides } from "../hooks/useRides";
 import { useAuth } from "../hooks/useAuth";
 import { geocodeAddress } from "../utils/geocoding";
 import RideMap from "../components/RideMap";
+import Background from "../components/Background";
 import type { RideCreateData, Ride } from "../types";
 
 type Mode = "rider" | "driver";
@@ -402,7 +403,8 @@ export default function RidePostAndRequestPage() {
   const isEditing = !!editingRide;
 
   return (
-    <div className="flex flex-col" style={{ minHeight: 'calc(100vh - 80px)', backgroundColor: 'var(--color-background-warm)' }}>
+    <div className="flex flex-col" style={{ minHeight: 'calc(100vh - 80px)' }}>
+      <Background />
       <div className="max-w-5xl mx-auto w-full">
       {/* Mode Toggle */}
       <motion.div 
@@ -699,23 +701,28 @@ export default function RidePostAndRequestPage() {
 
       {/* Map Preview */}
       <motion.div
+        className="rounded-lg p-4"
+        style={{ 
+          backgroundColor: 'rgba(255, 255, 255, 0.65)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid var(--color-secondary)'
+        }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="p-4">
-          <motion.h3 
-            className="text-sm font-semibold mb-2 flex items-center gap-2" 
-            style={{ color: 'var(--color-primary)' }}
-            initial={{ x: -20 }}
-            animate={{ x: 0 }}
-          >
-            <MapPinned size={18} />
-            Route Preview
-            {(geocodingStatus.origin === 'loading' || geocodingStatus.destination === 'loading') && (
-              <Loader2 size={14} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
-            )}
-          </motion.h3>
+        <motion.h3 
+          className="text-sm font-semibold mb-2 flex items-center gap-2" 
+          style={{ color: 'var(--color-primary)' }}
+          initial={{ x: -20 }}
+          animate={{ x: 0 }}
+        >
+          <MapPinned size={18} />
+          Route Preview
+          {(geocodingStatus.origin === 'loading' || geocodingStatus.destination === 'loading') && (
+            <Loader2 size={14} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
+          )}
+        </motion.h3>
           
           {/* Geocoding status indicator */}
           {(geocodingStatus.origin === 'error' || geocodingStatus.destination === 'error') && (
@@ -748,14 +755,24 @@ export default function RidePostAndRequestPage() {
               height="256px"
             />
           </motion.div>
-        </div>
+      </motion.div>
 
-        {/* Current User's Rides/Requests */}
-        <div className="p-4 space-y-3">
-          <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
-            <Clock size={20} />
-            {mode === "rider" ? "Your Ride Requests" : "Your Posted Rides"}
-          </h3>
+      {/* Current User's Rides/Requests */}
+      <motion.div 
+        className="rounded-lg p-4 space-y-3 mt-4"
+        style={{ 
+          backgroundColor: 'rgba(255, 255, 255, 0.65)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid var(--color-secondary)'
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+          <Clock size={20} />
+          {mode === "rider" ? "Your Ride Requests" : "Your Posted Rides"}
+        </h3>
           
           {!isAuthenticated ? (
             <motion.div
@@ -905,7 +922,6 @@ export default function RidePostAndRequestPage() {
               ))}
             </div>
           )}
-        </div>
       </motion.div>
       </div>
     </div>

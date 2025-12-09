@@ -2,6 +2,7 @@ import { useMemo, useState, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { apiPatch, apiPost, API_BASE_URL } from "../utils/api";
 import { StarRating } from "../components/StarRating";
+import Background from "../components/Background";
 import type { User } from "../types";
 
 interface UpdateProfileData {
@@ -198,14 +199,16 @@ export default function UserSettingsPage() {
   // Early return AFTER all hooks
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background-warm)' }}>
+      <div className="min-h-screen flex items-center justify-center">
+        <Background />
         <p className="text-lg" style={{ color: 'var(--color-primary)' }}>Loading user profile...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background-warm)' }}>
+    <div className="min-h-screen">
+      <Background />
       {/* Hidden file input for avatar upload */}
       <input
         ref={fileInputRef}
@@ -231,7 +234,7 @@ export default function UserSettingsPage() {
       )}
 
       <main className="mx-auto w-full max-w-3xl px-4 py-6">
-        <section className="bg-white rounded-xl shadow-sm" style={{ border: '1px solid var(--color-secondary)' }}>
+        <section className="rounded-xl shadow-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)' }}>
           {/* Driver/rider toggle removed — settings are now a single unified page */}
 
           <div className="px-6 py-6">
@@ -273,7 +276,7 @@ export default function UserSettingsPage() {
                   <InfoPill label={`Joined ${joinDate}`} />
                 </div>
                 {user.rating_count > 0 ? (
-                  <div className="bg-white rounded-lg px-4 py-3" style={{ border: '1px solid var(--color-secondary)' }}>
+                  <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)' }}>
                     <p className="text-sm text-gray-600 mb-2">Your Rating</p>
                     <div className="flex items-center gap-3">
                       <StarRating rating={user.rating_avg} readonly size="lg" />
@@ -288,7 +291,7 @@ export default function UserSettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-lg px-4 py-3" style={{ border: '1px solid var(--color-secondary)' }}>
+                  <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)' }}>
                     <p className="text-sm text-gray-600">No reviews yet</p>
                   </div>
                 )}
@@ -297,22 +300,22 @@ export default function UserSettingsPage() {
             </div>
           </div>
 
-          <div className="px-4 py-5 sm:px-6" style={{ borderTop: '1px solid var(--color-secondary)', backgroundColor: 'var(--color-background-warm)' }}>
+          <div className="px-4 py-5 sm:px-6" style={{ borderTop: '1px solid var(--color-secondary)', backgroundColor: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(8px)' }}>
             <div className="space-y-3">
               {actionSections.map(({ label, helper, onClick }) => (
                 <button
                   key={label}
                   type="button"
                   onClick={onClick}
-                  className="w-full bg-white rounded-lg px-4 py-3 text-left shadow-sm transition-all"
-                  style={{ border: '1px solid var(--color-secondary)' }}
+                  className="w-full rounded-lg px-4 py-3 text-left shadow-sm transition-all"
+                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = 'var(--color-primary)';
-                    e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.05)';
+                    e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.15)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'var(--color-secondary)';
-                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.65)';
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -330,22 +333,22 @@ export default function UserSettingsPage() {
           </div>
         </section>
 
-        <section className="mt-6 bg-white rounded-xl shadow-sm" style={{ border: '1px solid var(--color-secondary)' }}>
+        <section className="mt-6 rounded-xl shadow-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)' }}>
           <div className="px-6 py-5 space-y-4">
             <h2 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>Security</h2>
             <div className="flex flex-col gap-4">
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(true)}
-                className="w-full bg-white rounded-lg px-4 py-3 text-left shadow-sm transition-all"
-                style={{ border: '1px solid var(--color-secondary)' }}
+                className="w-full rounded-lg px-4 py-3 text-left shadow-sm transition-all"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.05)';
+                  e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'var(--color-secondary)';
-                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.65)';
                 }}
               >
                 <div className="flex items-center justify-between">
@@ -364,7 +367,7 @@ export default function UserSettingsPage() {
           </div>
         </section>
 
-        <section className="mt-6 bg-white rounded-xl shadow-sm" style={{ border: '1px solid var(--color-secondary)' }}>
+        <section className="mt-6 rounded-xl shadow-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)', border: '1px solid var(--color-secondary)' }}>
           <div className="px-6 py-5 space-y-4">
             <h2 className="text-lg font-semibold" style={{ color: 'var(--color-primary)' }}>Privacy</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -373,16 +376,16 @@ export default function UserSettingsPage() {
                 onClick={handleDataExport}
                 disabled={isLoading}
                 className="rounded-lg px-4 py-3 text-left shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ border: '1px solid var(--color-secondary)', backgroundColor: 'var(--color-background-warm)' }}
+                style={{ border: '1px solid var(--color-secondary)', backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)' }}
                 onMouseEnter={(e) => {
                   if (!isLoading) {
                     e.currentTarget.style.borderColor = 'var(--color-primary)';
-                    e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.1)';
+                    e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.15)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'var(--color-secondary)';
-                  e.currentTarget.style.backgroundColor = 'var(--color-background-warm)';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.65)';
                 }}
               >
                 <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>Request data export</p>
@@ -395,16 +398,16 @@ export default function UserSettingsPage() {
                 onClick={handleDeleteAccount}
                 disabled={isLoading}
                 className="rounded-lg px-4 py-3 text-left shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ border: '1px solid var(--color-secondary)', backgroundColor: 'var(--color-background-warm)' }}
+                style={{ border: '1px solid var(--color-secondary)', backgroundColor: 'rgba(255, 255, 255, 0.65)', backdropFilter: 'blur(8px)' }}
                 onMouseEnter={(e) => {
                   if (!isLoading) {
                     e.currentTarget.style.borderColor = '#dc2626';
-                    e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)';
+                    e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.15)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'var(--color-secondary)';
-                  e.currentTarget.style.backgroundColor = 'var(--color-background-warm)';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.65)';
                 }}
               >
                 <p className="font-semibold" style={{ color: '#dc2626' }}>Delete account</p>
@@ -527,7 +530,8 @@ function InfoPill({ label }: { label: string }) {
       className="rounded-full px-4 py-2 text-sm font-medium shadow-sm"
       style={{ 
         border: '1px solid var(--color-secondary)', 
-        backgroundColor: 'var(--color-background-warm)', 
+        backgroundColor: 'rgba(255, 255, 255, 0.65)',
+        backdropFilter: 'blur(8px)',
         color: '#4a5568' 
       }}
     >

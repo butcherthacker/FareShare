@@ -5,6 +5,7 @@ import { CheckCircle, MailWarning, RefreshCcw, MailPlus } from "lucide-react";
 
 import { apiPost, ApiClientError } from "../utils/api";
 import { useAuth } from "../hooks/useAuth";
+import Background from "../components/Background";
 
 type VerificationStatus = "idle" | "verifying" | "success" | "error";
 
@@ -98,8 +99,9 @@ export default function VerifyEmail() {
   return (
     <div
       className="flex items-center justify-center px-4"
-      style={{ minHeight: "calc(100vh - 80px)", backgroundColor: "var(--color-background-warm)" }}
+      style={{ height: "calc(100vh - 80px)" }}
     >
+      <Background />
       <motion.div
         className="w-full max-w-lg bg-white rounded-2xl shadow-lg p-8 text-center"
         style={{ border: "1px solid var(--color-secondary)" }}

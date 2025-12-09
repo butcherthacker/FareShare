@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { ApiClientError } from "../utils/api";
 import { motion } from "framer-motion";
 import { User, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft } from "lucide-react";
+import Background from "../components/Background";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -60,7 +61,8 @@ export default function SignUp() {
   }
 
   return (
-    <div className="px-4 py-6 flex flex-col items-center justify-center overflow-hidden" style={{ height: 'calc(100vh - 80px)', backgroundColor: 'var(--color-background-warm)' }}>
+    <div className="px-4 py-6 flex flex-col items-center justify-center overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
+      <Background />
       <motion.div 
         className="w-full max-w-md"
         initial={{ opacity: 0, y: 20 }}

@@ -25,7 +25,7 @@
  * ```
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import { Icon, LatLngBounds } from 'leaflet';
 import type { LatLngExpression } from 'leaflet';
@@ -126,14 +126,14 @@ export default function RideMap({
   const hasDestination = hasValidCoordinates(destinationLat, destinationLng);
   const hasAnyCoordinates = hasOrigin || hasDestination;
 
-  // Refs for custom icons (created once)
-  const originIconRef = useRef<Icon | null>(null);
-  const destinationIconRef = useRef<Icon | null>(null);
+  // State for custom icons (triggers re-render when created)
+  const [originIcon, setOriginIcon] = useState<Icon | null>(null);
+  const [destinationIcon, setDestinationIcon] = useState<Icon | null>(null);
 
   // Create icons on first render
   useEffect(() => {
-    originIconRef.current = createCustomIcon('accent');
-    destinationIconRef.current = createCustomIcon('primary');
+    setOriginIcon(createCustomIcon('accent'));
+    setDestinationIcon(createCustomIcon('primary'));
   }, []);
 
   // If no valid coordinates, show placeholder
@@ -143,7 +143,8 @@ export default function RideMap({
         className={`rounded-lg overflow-hidden flex items-center justify-center ${className}`}
         style={{ 
           height,
-          backgroundColor: 'var(--color-background-warm)',
+          backgroundColor: 'rgba(255, 255, 255, 0.65)',
+          backdropFilter: 'blur(8px)',
           border: '2px solid var(--color-secondary)'
         }}
       >
@@ -184,64 +185,73 @@ export default function RideMap({
   const defaultCenter: LatLngExpression = coordinates[0] || [43.6532, -79.3832];
 
   return (
-    <div 
-      className={`rounded-lg overflow-hidden ${className}`}
-      style={{ 
-        height,
-        border: '2px solid var(--color-secondary)'
-      }}
-    >
-      <MapContainer
-        center={defaultCenter}
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
-        scrollWheelZoom={false}
-      >
-        {/* OpenStreetMap tile layer */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {/* Auto-fit bounds controller */}
-        {bounds && <MapBoundsController bounds={bounds} />}
-
-        {/* Origin marker */}
-        {hasOrigin && originLat != null && originLng != null && originIconRef.current && (
-          <Marker 
-            position={[originLat, originLng]} 
-            icon={originIconRef.current}
-            title={originLabel}
-          />
-        )}
-
-        {/* Destination marker */}
-        {hasDestination && destinationLat != null && destinationLng != null && destinationIconRef.current && (
-          <Marker 
-            position={[destinationLat, destinationLng]} 
-            icon={destinationIconRef.current}
-            title={destinationLabel}
-          />
-        )}
-
-        {/* Route line between markers */}
-        {showRoute && hasOrigin && hasDestination && coordinates.length === 2 && (
-          <Polyline
-            positions={coordinates}
-            pathOptions={{ 
-              color: '#fc4a1a',  // Primary color
-              weight: 3,
-              opacity: 0.7,
-              dashArray: '10, 10'  // Dashed line
-            }}
-          />
-        )}
-      </MapContainer>
-
-      {/* Legend showing marker meanings */}
+    <div className={className}>
       <div 
-        className="absolute bottom-2 left-2 bg-white rounded-lg shadow-md p-2 text-xs"
-        style={{ border: '1px solid var(--color-secondary)' }}
+        className="rounded-lg overflow-hidden relative"
+        style={{ 
+          height,
+          backgroundColor: 'rgba(255, 255, 255, 0.65)',
+          backdropFilter: 'blur(8px)',
+          border: '2px solid var(--color-secondary)'
+        }}
+      >
+        <MapContainer
+          center={defaultCenter}
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={false}
+        >
+          {/* OpenStreetMap tile layer */}
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {/* Auto-fit bounds controller */}
+          {bounds && <MapBoundsController bounds={bounds} />}
+
+          {/* Origin marker */}
+          {hasOrigin && originLat != null && originLng != null && originIcon && (
+            <Marker 
+              position={[originLat, originLng]} 
+              icon={originIcon}
+              title={originLabel}
+            />
+          )}
+
+          {/* Destination marker */}
+          {hasDestination && destinationLat != null && destinationLng != null && destinationIcon && (
+            <Marker 
+              position={[destinationLat, destinationLng]} 
+              icon={destinationIcon}
+              title={destinationLabel}
+            />
+          )}
+
+          {/* Route line between markers */}
+          {showRoute && hasOrigin && hasDestination && coordinates.length === 2 && (
+            <Polyline
+              positions={coordinates}
+              pathOptions={{ 
+                color: '#fc4a1a',  // Primary color
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '10, 10'  // Dashed line
+              }}
+            />
+          )}
+        </MapContainer>
+      </div>
+
+      {/* Legend showing marker meanings - positioned below map */}
+      <div 
+        className="rounded-lg shadow-md p-2 text-xs mt-2"
+        style={{ 
+          backgroundColor: 'rgba(255, 255, 255, 0.75)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid var(--color-secondary)',
+          display: 'inline-block'
+        }}
       >
         <div className="flex items-center gap-2 mb-1">
           <MapPin size={14} style={{ color: 'var(--color-accent)' }} />
