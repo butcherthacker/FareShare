@@ -9,6 +9,78 @@ Ride sharing app
 - [Python 3.8+](https://www.python.org/downloads/) (the script will automatically create a virtual environment)
 - [Node.js 16+](https://nodejs.org/en/download)
 - npm or yarn
+- [PostgreSQL 12+](https://www.postgresql.org/download/) - Database server
+
+### Environment Configuration
+
+Before running the application, you need to configure environment variables.
+
+#### Backend Setup (.env)
+
+Create a `.env` file in the `backend/` directory with the following configuration:
+
+```env
+# Database Configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/fareshare
+DB_HOST=localhost
+DB_NAME=fareshare
+DB_USER=your_postgres_username
+DB_PASSWORD=your_postgres_password
+DB_PORT=5432
+
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+DEBUG=true
+
+# Security (IMPORTANT: Change these for production!)
+SECRET_KEY=your-secret-key-here-generate-a-random-string
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+VERIFICATION_TOKEN_EXPIRE_HOURS=24
+
+# Email Configuration - Gmail SMTP
+# For Gmail: Enable 2FA and generate an App Password at https://myaccount.google.com/apppasswords
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-specific-password
+MAIL_FROM=your-email@gmail.com
+MAIL_FROM_NAME=FareShare
+MAIL_PORT=587
+MAIL_SERVER=smtp.gmail.com
+MAIL_STARTTLS=True
+MAIL_SSL_TLS=False
+USE_CREDENTIALS=True
+VALIDATE_CERTS=True
+
+# Frontend URL (for email verification links)
+FRONTEND_URL=http://localhost:5173
+```
+
+**Required Steps:**
+
+1. **PostgreSQL Database:**
+   - Install PostgreSQL and create a database named `fareshare`
+   - Update `DB_USER` and `DB_PASSWORD` with your PostgreSQL credentials
+   - Ensure the `DATABASE_URL` matches your database credentials
+
+2. **Secret Key:**
+   - Generate a secure random string for `SECRET_KEY`
+   - Example: `openssl rand -hex 32` (or use any secure random generator)
+
+3. **Email Configuration:**
+   - Use Gmail with an App Password (requires 2FA enabled)
+   - Or configure a different SMTP provider by updating `MAIL_SERVER`, `MAIL_PORT`, etc.
+
+#### Frontend Setup (.env) - Optional
+
+Create a `.env` file in the `frontend/` directory only if your backend runs on a different URL:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+**Note:** This is optional for local development (defaults to `http://127.0.0.1:8000`). Only needed if your backend runs on a different port/host or for production deployment.
+
 
 ### Installation
 
@@ -100,4 +172,5 @@ git push
 ```
 
 7. Repeat from step 1 after pushing your changes so you can make future changes.
+
 
