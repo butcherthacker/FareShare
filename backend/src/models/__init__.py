@@ -11,8 +11,9 @@ from src.models.user import User
 from src.models.ride import Ride
 from src.models.booking import Booking
 from src.models.review import Review
+from src.models.incident import Incident
 
-__all__ = ["User", "Ride", "Booking", "Review"]
+__all__ = ["User", "Ride", "Booking", "Review", "Incident"]
 
 class ModelJSONMixin:
     """

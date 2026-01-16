@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, Users, DollarSign, ArrowLeft, User, CheckCircle, Clock, MapPin, MessageSquare, Send, X } from "lucide-react";
+import { Calendar, Users, DollarSign, ArrowLeft, User, CheckCircle, Clock, MapPin, MessageSquare, Send, X, AlertTriangle } from "lucide-react";
 import { getRide } from "../utils/api";
 import { listBookings } from "../utils/api";
 import BookingModal from "../components/BookingModal";
+import IncidentReportModal from "../components/IncidentReportModal";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { StarRating } from "../components/StarRating";
 import RideMap from "../components/RideMap";
 import Background from "../components/Background";
 import { useMessages } from "../hooks/useMessages";
+import { useIncidents } from "../hooks/useIncidents";
 import { useAuth } from "../hooks/useAuth";
 import type { Ride } from "../types/ride";
 import type { SearchResultRide } from "../types";
 import type { Booking } from "../types/booking";
+import type { IncidentCategory } from "../types";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -30,8 +33,14 @@ export default function TripDetails() {
   const [selectedRecipient, setSelectedRecipient] = useState<{ id: any; name: string; role: string } | null>(null);
   const [messageText, setMessageText] = useState("");
 
+  // Incident reporting state
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
+  const [incidentReportedUser, setIncidentReportedUser] = useState<{ id: string; name: string; role: 'driver' | 'passenger' } | null>(null);
+  const [incidentBookingId, setIncidentBookingId] = useState<string | null>(null);
+
   const { sendMessage, loading: sendingMessage, error: messageError, clearError } = useMessages();
-  const { isAuthenticated } = useAuth();
+  const { createReport, loading: reportingIncident, error: incidentError, clearError: clearIncidentError } = useIncidents();
+  const { isAuthenticated, user: currentUser } = useAuth();
 
   function formatApiError(err: any): string {
     if (!err) return 'Unknown error';
@@ -148,6 +157,37 @@ export default function TripDetails() {
       alert(`Message sent to ${selectedRecipient.name}!`);
     } else {
       // Error - error state is already set in the hook
+    }
+  };
+
+  // Handle opening incident report modal
+  const handleOpenIncidentReport = (reportedUser: { id: string; name: string; role: 'driver' | 'passenger' }, bookingId: string) => {
+    console.log('Opening incident report for:', reportedUser);
+    setIncidentReportedUser(reportedUser);
+    setIncidentBookingId(bookingId);
+    clearIncidentError();
+    setShowIncidentModal(true);
+  };
+
+  // Handle submitting incident report
+  const handleSubmitIncident = async (category: IncidentCategory, description: string) => {
+    if (!incidentReportedUser || !incidentBookingId || !id) return;
+
+    const result = await createReport({
+      reported_user_id: incidentReportedUser.id,
+      ride_id: id,
+      booking_id: incidentBookingId,
+      category,
+      description
+    });
+
+    if (result) {
+      // Success - modal will auto-close after showing success message
+      setTimeout(() => {
+        setShowIncidentModal(false);
+        setIncidentReportedUser(null);
+        setIncidentBookingId(null);
+      }, 2000);
       // The error will be displayed in the modal
     }
   };
@@ -240,7 +280,7 @@ export default function TripDetails() {
                     <div className="font-semibold mb-3">Driver</div>
                     <div className="flex items-center gap-3">
                       <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#f3f4f6' }} />
-                      <div>
+                      <div className="flex-1">
                         <div className="font-medium">{ride.driver.full_name}</div>
                         {ride.driver.rating_avg > 0 ? (
                           <div className="flex items-center gap-2 mt-1">
@@ -254,6 +294,51 @@ export default function TripDetails() {
                         )}
                       </div>
                     </div>
+                    
+                    {/* Driver Action Buttons - Only show for passengers with confirmed bookings */}
+                    {isAuthenticated && currentUser && ride.driver && bookings.some(
+                      b => b.passenger?.id === currentUser.id && b.status === 'confirmed'
+                    ) && (
+                      <div className="mt-3 flex flex-col gap-2">
+                        <button
+                          onClick={() => handleOpenMessage({
+                            id: ride.driver!.id,
+                            name: ride.driver!.full_name || 'Driver',
+                            role: 'Driver'
+                          })}
+                          className="px-3 py-2 text-sm rounded flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                          style={{ 
+                            backgroundColor: 'var(--color-primary)', 
+                            color: 'white'
+                          }}
+                        >
+                          <MessageSquare size={14} />
+                          Message Driver
+                        </button>
+                        <button
+                          onClick={() => {
+                            const myBooking = bookings.find(
+                              b => b.passenger?.id === currentUser.id && b.status === 'confirmed'
+                            );
+                            if (myBooking && ride.driver) {
+                              handleOpenIncidentReport({
+                                id: ride.driver.id.toString(),
+                                name: ride.driver.full_name || 'Driver',
+                                role: 'driver'
+                              }, myBooking.id);
+                            }
+                          }}
+                          className="px-3 py-2 text-sm rounded flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                          style={{ 
+                            backgroundColor: '#dc2626',
+                            color: 'white'
+                          }}
+                        >
+                          <AlertTriangle size={14} />
+                          Report Driver
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -307,23 +392,41 @@ export default function TripDetails() {
                           <div className="text-xs text-gray-500">{b.seats_reserved} seat{b.seats_reserved>1?'s':''} • {b.status}</div>
                         </div>
                         <div className="text-sm text-gray-500">{b.booked_at ? new Date(b.booked_at).toLocaleString() : ''}</div>
-                        {isAuthenticated && b.passenger && (
-                          <button
-                            onClick={() => handleOpenMessage({
-                              id: b.passenger!.id,
-                              name: b.passenger!.full_name || 'Guest',
-                              role: 'Passenger'
-                            })}
-                            className="px-3 py-1 text-sm rounded flex items-center gap-1 hover:opacity-90 transition-opacity"
-                            style={{ 
-                              backgroundColor: 'var(--color-primary)', 
-                              color: 'white'
-                            }}
-                            title="Send message"
-                          >
-                            <MessageSquare size={14} />
-                            Message
-                          </button>
+                        {isAuthenticated && b.passenger && b.status === 'confirmed' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleOpenMessage({
+                                id: b.passenger!.id,
+                                name: b.passenger!.full_name || 'Guest',
+                                role: 'Passenger'
+                              })}
+                              className="px-3 py-1 text-sm rounded flex items-center gap-1 hover:opacity-90 transition-opacity"
+                              style={{ 
+                                backgroundColor: 'var(--color-primary)', 
+                                color: 'white'
+                              }}
+                              title="Send message"
+                            >
+                              <MessageSquare size={14} />
+                              Message
+                            </button>
+                            <button
+                              onClick={() => handleOpenIncidentReport({
+                                id: b.passenger!.id.toString(),
+                                name: b.passenger!.full_name || 'Guest',
+                                role: 'passenger'
+                              }, b.id)}
+                              className="px-3 py-1 text-sm rounded flex items-center gap-1 hover:opacity-90 transition-opacity"
+                              style={{ 
+                                backgroundColor: '#dc2626',
+                                color: 'white'
+                              }}
+                              title="Report incident"
+                            >
+                              <AlertTriangle size={14} />
+                              Report
+                            </button>
+                          </div>
                         )}
                       </li>
                     );
@@ -425,6 +528,24 @@ export default function TripDetails() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Incident Report Modal */}
+      {showIncidentModal && incidentReportedUser && incidentBookingId && id && (
+        <IncidentReportModal
+          isOpen={showIncidentModal}
+          onClose={() => {
+            setShowIncidentModal(false);
+            setIncidentReportedUser(null);
+            setIncidentBookingId(null);
+          }}
+          reportedUser={incidentReportedUser}
+          rideId={id}
+          bookingId={incidentBookingId}
+          onSubmit={handleSubmitIncident}
+          loading={reportingIncident}
+          error={incidentError}
+        />
       )}
     </ErrorBoundary>
   );

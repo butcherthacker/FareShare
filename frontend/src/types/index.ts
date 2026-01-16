@@ -40,3 +40,17 @@ export type {
     BookingStats,
     BookingQueryParams,
 } from './booking';
+
+export type {
+    IncidentCategory,
+    IncidentStatus,
+    IncidentUserInfo,
+    IncidentRideInfo,
+    Incident,
+    IncidentAdminResponse,
+    CreateIncidentRequest,
+    IncidentListResponse,
+    IncidentComment,
+    IncidentCommentAuthor,
+    CreateIncidentCommentRequest,
+} from './incident';

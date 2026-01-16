@@ -16,9 +16,11 @@ import os
 from sqlalchemy import text, select
 
 from src.config.db import init_db, close_db, get_async_session
-from src.models import User, Ride, Booking, Review
+from src.models import User, Ride, Booking, Review, Incident
 from src.routes import auth_router, users_router, rides_router, booking_router, trip_summary # Trip summary routes
 from src.routes.reviews import router as reviews_router
+from src.routes.incidents import router as incidents_router
+from src.routes.incident_comments import router as incident_comments_router
 
 # Import admin routers (Sprint 3)
 from src.routes.auth import router as auth_router # Re-importing for admin
@@ -93,6 +95,8 @@ app.include_router(users_router, prefix="/api")
 app.include_router(rides_router, prefix="/api")
 app.include_router(booking_router, prefix="/api")
 app.include_router(reviews_router, prefix="/api")
+app.include_router(incidents_router, prefix="/api")
+app.include_router(incident_comments_router, prefix="/api")
 app.include_router(trip_summary.router) # Trip summary routes (already has /api/trips prefix)
 from src.routes.geo import router as geo_router
 app.include_router(geo_router, prefix="/api")  # Geocoding routes
@@ -101,9 +105,9 @@ app.include_router(messages_router)  # Messaging routes (already has /api/messag
 
 # Include admin routers (Sprint 3)
 app.include_router(auth_router)  # Auth routes for admin
-app.include_router(admin_rides_router)
-app.include_router(admin_reports_router)
-app.include_router(admin_incidents_router)
+app.include_router(admin_rides_router, prefix="/api")
+app.include_router(admin_reports_router, prefix="/api")
+app.include_router(admin_incidents_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])
