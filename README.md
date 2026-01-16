@@ -2,6 +2,14 @@
 
 Ride sharing app
 
+<img width="2548" height="1298" alt="image" src="https://github.com/user-attachments/assets/f458641b-f829-45af-8821-35778bfa5dab" />
+
+
+## Demo Video
+
+https://github.com/user-attachments/assets/25696072-142e-447d-b973-da5d1830bc32
+
+
 ## Quick Start
 
 ### Prerequisites
@@ -172,5 +180,6 @@ git push
 ```
 
 7. Repeat from step 1 after pushing your changes so you can make future changes.
+
 
 
