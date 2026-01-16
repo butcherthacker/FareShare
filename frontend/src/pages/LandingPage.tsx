@@ -44,7 +44,7 @@ const LandingPage: React.FC = () => {
     return (
         <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
             <Background />
-            <div className="flex-1 flex flex-col items-center justify-start px-6 pt-57 pb-3 box-border mr-4.5">
+            <div className="flex-1 flex flex-col items-center justify-start px-6 pt-47 pb-3 box-border mr-4.5">
                 {/* Logo */}
                 <motion.div 
                     className="mb-9"

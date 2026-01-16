@@ -25,7 +25,7 @@ const Background: React.FC<BackgroundProps> = ({ className = '' }) => {
         pointerEvents: 'none'
       }}
     >
-      <div style={{ height: '65.95%', background: 'linear-gradient(to bottom, #90bff7, #ffffff)', position: 'relative' }}>
+      <div style={{ height: '80.95%', background: 'linear-gradient(to bottom, #90bff7, #ffffff)', position: 'relative' }}>
 
         {/* Cloud 1 */}
         <div style={{ position: 'absolute', top: '10%', left: '8%', height: '150px', aspectRatio: '2.0' }}>
@@ -397,7 +397,7 @@ const Background: React.FC<BackgroundProps> = ({ className = '' }) => {
       <div style={{ height: '0.45%', backgroundColor: '#997f72' }}></div>
       <div style={{ height: '0.4%', backgroundColor: '#ae8e7f' }}></div>
       <div style={{ height: '0.3%', backgroundColor: '#715348' }}></div>
-      <div style={{ height: '10%', backgroundColor: '#5f5c5b' }}></div>
+      <div style={{ height: '8%', backgroundColor: '#5f5c5b' }}></div>
     </div>
   );
 };

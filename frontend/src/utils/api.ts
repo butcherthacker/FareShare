@@ -231,6 +231,14 @@ import type {
 } from '../types';
 
 import type { SearchResponse } from '../types';
+import type { 
+    Incident, 
+    IncidentListResponse, 
+    CreateIncidentRequest, 
+    IncidentStatus,
+    IncidentComment,
+    CreateIncidentCommentRequest
+} from '../types';
 
 /**
  * Create a new ride offer or request
@@ -414,4 +422,67 @@ export async function cancelBooking(bookingId: string): Promise<void> {
  */
 export async function getBookingStats(): Promise<BookingStats> {
     return apiGet<BookingStats>('/api/bookings/stats/summary');
+}
+
+// ===== INCIDENT API FUNCTIONS =====
+
+/**
+ * Create a new incident report
+ * @param incidentData - Incident report details
+ * @returns Created incident
+ */
+export async function createIncident(
+    incidentData: CreateIncidentRequest
+): Promise<Incident> {
+    return apiPost<Incident>('/api/incidents', incidentData);
+}
+
+/**
+ * Get all incidents involving the current user (as reporter or reported)
+ * @param params - Query parameters for filtering and pagination
+ * @returns List of incidents
+ */
+export async function getMyIncidents(params?: {
+    page?: number;
+    limit?: number;
+    status?: IncidentStatus;
+}): Promise<IncidentListResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.set('page', params.page.toString());
+    if (params?.limit !== undefined) queryParams.set('limit', params.limit.toString());
+    if (params?.status) queryParams.set('status', params.status);
+    
+    const query = queryParams.toString();
+    return apiGet<IncidentListResponse>(`/api/incidents${query ? `?${query}` : ''}`);
+}
+
+/**
+ * Get details of a specific incident
+ * @param incidentId - UUID of the incident
+ * @returns Incident details
+ */
+export async function getIncident(incidentId: string): Promise<Incident> {
+    return apiGet<Incident>(`/api/incidents/${incidentId}`);
+}
+
+/**
+ * Add a comment to an incident
+ * @param incidentId - UUID of the incident
+ * @param commentData - Comment text
+ * @returns Created comment
+ */
+export async function addIncidentComment(
+    incidentId: string,
+    commentData: CreateIncidentCommentRequest
+): Promise<IncidentComment> {
+    return apiPost<IncidentComment>(`/api/incidents/${incidentId}/comments`, commentData);
+}
+
+/**
+ * Get all comments for an incident
+ * @param incidentId - UUID of the incident
+ * @returns List of comments
+ */
+export async function getIncidentComments(incidentId: string): Promise<IncidentComment[]> {
+    return apiGet<IncidentComment[]>(`/api/incidents/${incidentId}/comments`);
 }

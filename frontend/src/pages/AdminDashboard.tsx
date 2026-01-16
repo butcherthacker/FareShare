@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { motion,AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 import Background from "../components/Background";
+import { getIncidentComments, addIncidentComment } from "../utils/api";
+import type { IncidentComment } from "../types";
 
 import { 
   BarChart3,
@@ -19,6 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 
 // ============================================================
@@ -192,6 +196,9 @@ export default function AdminDashboard() {
   const [reviewText, setReviewText] = useState("");
   const [resolveText, setResolveText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [incidentComments, setIncidentComments] = useState<Record<string, IncidentComment[]>>({});
+  const [newCommentText, setNewCommentText] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   // ============================================================
   // API FUNCTIONS
@@ -215,7 +222,7 @@ export default function AdminDashboard() {
 
 
       const response = await fetch(
-        `${API_BASE_URL}/admin/reports/usage?${params.toString()}`,
+        `${API_BASE_URL}/api/admin/reports/usage?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -271,7 +278,7 @@ const fetchRides = async (page: number) => {
       status: statusFilter !== "all" ? statusFilter : "",  // ← Fixed filter logic
     });
 
-    const response = await fetch(`${API_BASE_URL}/admin/rides?${params.toString()}`, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/rides?${params.toString()}`, {
       headers: {
         "Authorization": `Bearer ${token}`,
       },
@@ -313,11 +320,11 @@ const fetchIncidents = async (page: number) => {
       const params = new URLSearchParams();
       if (dateRange.from) params.append("from_date", dateRange.from);
       if (dateRange.to) params.append("to_date", dateRange.to);
-      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
-      params.append("page", page.toString());
+      if (moderationStatusFilter && moderationStatusFilter !== "all") params.append("status", moderationStatusFilter);
+      params.append("page", (page - 1).toString()); // Convert to 0-based for backend
       params.append("limit", itemsPerPage.toString());
 
-      const response = await fetch(`${API_BASE_URL}/admin/incidents?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/incidents?${params}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -327,7 +334,17 @@ const fetchIncidents = async (page: number) => {
       if (!response.ok) throw new Error(`Failed to fetch incidents: ${response.status}`);
 
       const data = await response.json();
-      setIncidents(data.results); 
+      // Transform backend data to match frontend expectations
+      const transformedIncidents = data.results.map((inc: any) => ({
+        incident_id: inc.id,
+        created_at: inc.created_at,
+        status: inc.status,
+        category: inc.category,
+        summary: inc.description,
+        user: { id: inc.reporter?.id || inc.reporter_id, name: inc.reporter?.full_name || 'Unknown' },
+        ride_id: inc.ride_id
+      }));
+      setIncidents(transformedIncidents); 
       if (data.results.length === itemsPerPage) {
       setTotalPages(page + 1); 
     } else {
@@ -356,7 +373,7 @@ const fetchIncidents = async (page: number) => {
         group_by: groupBy,
       });
 
-      const response = await fetch(`${API_BASE_URL}/admin/reports/usage.csv?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/reports/usage.csv?${params}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
@@ -394,7 +411,7 @@ const fetchIncidents = async (page: number) => {
     } else if (activeTab === "incidents") {
       fetchIncidents(currentPage);
     }
-  }, [token, activeTab, dateRange, statusFilter, groupBy, currentPage, itemsPerPage]);
+  }, [token, activeTab, dateRange, statusFilter, moderationStatusFilter, groupBy, currentPage, itemsPerPage]);
 
   // ============================================================
   // HELPER COMPONENTS
@@ -427,16 +444,15 @@ const fetchIncidents = async (page: number) => {
 
   setSubmitting(true);
   try {
-    // TODO: Replace with actual API call when backend is ready
-    const response = await fetch(`${API_BASE_URL}/admin/incidents/${incidentId}/review`, {
-      method: "POST",
+    const response = await fetch(`${API_BASE_URL}/api/admin/incidents/${incidentId}`, {
+      method: "PATCH",
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         status: "reviewed",
-        notes: reviewText
+        admin_notes: reviewText
       })
     });
 
@@ -469,16 +485,15 @@ const handleResolveSubmit = async (incidentId: string) => {
 
   setSubmitting(true);
   try {
-    // TODO: Replace with actual API call when backend is ready
-    const response = await fetch(`${API_BASE_URL}/admin/incidents/${incidentId}/resolve`, {
-      method: "POST",
+    const response = await fetch(`${API_BASE_URL}/api/admin/incidents/${incidentId}`, {
+      method: "PATCH",
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         status: "resolved",
-        resolution: resolveText
+        admin_notes: resolveText
       })
     });
 
@@ -500,6 +515,48 @@ const handleResolveSubmit = async (incidentId: string) => {
     alert("Failed to resolve incident: " + err.message);
   } finally {
     setSubmitting(false);
+  }
+};
+
+const loadIncidentComments = async (incidentId: string) => {
+  try {
+    const comments = await getIncidentComments(incidentId);
+    setIncidentComments(prev => ({ ...prev, [incidentId]: comments }));
+  } catch (err: any) {
+    console.error("Failed to load comments:", err);
+  }
+};
+
+const handleAddAdminComment = async (incidentId: string) => {
+  if (!newCommentText.trim()) return;
+
+  setSubmittingComment(true);
+  try {
+    const newComment = await addIncidentComment(incidentId, { comment_text: newCommentText });
+    setIncidentComments(prev => ({
+      ...prev,
+      [incidentId]: [...(prev[incidentId] || []), newComment]
+    }));
+    setNewCommentText("");
+  } catch (err: any) {
+    alert(`Failed to add comment: ${err.message}`);
+  } finally {
+    setSubmittingComment(false);
+  }
+};
+
+const handleToggleIncident = async (incidentId: string) => {
+  const isExpanding = expandedIncidentId !== incidentId;
+  setExpandedIncidentId(isExpanding ? incidentId : null);
+  
+  if (isExpanding) {
+    setReviewText("");
+    setResolveText("");
+    setNewCommentText("");
+    // Load comments when expanding
+    if (!incidentComments[incidentId]) {
+      await loadIncidentComments(incidentId);
+    }
   }
 };
 
@@ -1029,47 +1086,15 @@ const handleResolveSubmit = async (incidentId: string) => {
                         </div>
                         
                         <div className="flex gap-2">
-                          {incident.status === "open" && (
-                            <>
-                              <motion.button
-                                onClick={() => {
-                                  setExpandedIncidentId(isExpanded ? null : incident.incident_id);
-                                  setReviewText("");
-                                  setResolveText("");
-                                }}
-                                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                {isExpanded ? "Cancel" : "Review"}
-                              </motion.button>
-                              <motion.button
-                                onClick={() => {
-                                  setExpandedIncidentId(isExpanded && expandedIncidentId === incident.incident_id ? null : incident.incident_id);
-                                  setReviewText("");
-                                  setResolveText("");
-                                }}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                Resolve
-                              </motion.button>
-                            </>
-                          )}
-                          
-                          {incident.status === "reviewed" && (
+                          {/* Review Button - Shows for all non-resolved incidents */}
+                          {incident.status !== "resolved" && (
                             <motion.button
-                              onClick={() => {
-                                setExpandedIncidentId(isExpanded ? null : incident.incident_id);
-                                setReviewText("");
-                                setResolveText("");
-                              }}
-                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              onClick={() => handleToggleIncident(incident.incident_id)}
+                              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                             >
-                              Resolve
+                              {isExpanded ? "Close" : "Review"}
                             </motion.button>
                           )}
                         </div>
@@ -1090,7 +1115,7 @@ const handleResolveSubmit = async (incidentId: string) => {
                           <div className="p-6 bg-gray-50">
                             {/* Review Form */}
                             {incident.status === "open" && (
-                              <div className="space-y-4">
+                              <div>
                                 <div>
                                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Review Notes
@@ -1103,16 +1128,14 @@ const handleResolveSubmit = async (incidentId: string) => {
                                     rows={4}
                                     style={{ border: '1px solid var(--color-secondary)' }}
                                   />
-                                </div>
-                                
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500">
-                                    This will mark the incident as "Reviewed" and notify relevant parties.
-                                  </p>
-                                  <motion.button
-                                    onClick={() => handleReviewSubmit(incident.incident_id)}
-                                    disabled={submitting || !reviewText.trim()}
-                                    className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                  <div className="flex items-start justify-between mt-3">
+                                    <p className="text-xs text-gray-500">
+                                      This will mark the incident as "Reviewed" and notify relevant parties.
+                                    </p>
+                                    <motion.button
+                                      onClick={() => handleReviewSubmit(incident.incident_id)}
+                                      disabled={submitting || !reviewText.trim()}
+                                      className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     whileHover={{ scale: submitting ? 1 : 1.05 }}
                                     whileTap={{ scale: submitting ? 1 : 0.95 }}
                                   >
@@ -1121,17 +1144,18 @@ const handleResolveSubmit = async (incidentId: string) => {
                                         <Loader2 size={16} className="animate-spin" />
                                         Submitting...
                                       </>
-                                    ) : (
-                                      "Submit Review"
-                                    )}
-                                  </motion.button>
+                                      ) : (
+                                        "Submit Review"
+                                      )}
+                                    </motion.button>
+                                  </div>
                                 </div>
                               </div>
                             )}
 
                             {/* Resolve Form */}
                             {(incident.status === "open" || incident.status === "reviewed") && (
-                              <div className="space-y-4">
+                              <div className="mt-4">
                                 <div>
                                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Resolution Notes
@@ -1144,16 +1168,14 @@ const handleResolveSubmit = async (incidentId: string) => {
                                     rows={4}
                                     style={{ border: '1px solid var(--color-secondary)' }}
                                   />
-                                </div>
-                                
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500">
-                                    This will mark the incident as "Resolved" and close the case.
-                                  </p>
-                                  <motion.button
-                                    onClick={() => handleResolveSubmit(incident.incident_id)}
-                                    disabled={submitting || !resolveText.trim()}
-                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                  <div className="flex items-start justify-between mt-3">
+                                    <p className="text-xs text-gray-500">
+                                      This will mark the incident as "Resolved" and close the case.
+                                    </p>
+                                    <motion.button
+                                      onClick={() => handleResolveSubmit(incident.incident_id)}
+                                      disabled={submitting || !resolveText.trim()}
+                                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     whileHover={{ scale: submitting ? 1 : 1.05 }}
                                     whileTap={{ scale: submitting ? 1 : 0.95 }}
                                   >
@@ -1162,13 +1184,83 @@ const handleResolveSubmit = async (incidentId: string) => {
                                         <Loader2 size={16} className="animate-spin" />
                                         Submitting...
                                       </>
-                                    ) : (
-                                      "Resolve Incident"
-                                    )}
-                                  </motion.button>
+                                      ) : (
+                                        "Resolve Incident"
+                                      )}
+                                    </motion.button>
+                                  </div>
                                 </div>
                               </div>
                             )}
+
+                            {/* Comments Section */}
+                            <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-secondary)' }}>
+                              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                                <MessageSquare size={16} />
+                                Follow-up Discussion ({incidentComments[incident.incident_id]?.length || 0})
+                              </h4>
+                              
+                              {/* Comments List */}
+                              {incidentComments[incident.incident_id] && incidentComments[incident.incident_id].length > 0 && (
+                                <div className="space-y-3 mb-3">
+                                  {incidentComments[incident.incident_id].map((comment) => (
+                                    <div
+                                      key={comment.id}
+                                      className={`p-3 rounded-lg ${
+                                        comment.is_admin_comment
+                                          ? 'bg-purple-50 border border-purple-200'
+                                          : 'bg-gray-50 border border-gray-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-start justify-between gap-2 mb-1">
+                                        <span className={`text-xs font-semibold ${
+                                          comment.is_admin_comment ? 'text-purple-700' : 'text-gray-700'
+                                        }`}>
+                                          {comment.is_admin_comment && '🛡️ Admin: '}
+                                          {comment.author?.full_name || 'Unknown'}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(comment.created_at).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-gray-700">{comment.comment_text}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Add Comment Form */}
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={newCommentText}
+                                  onChange={(e) => setNewCommentText(e.target.value)}
+                                  placeholder="Add an admin comment or ask for more details..."
+                                  className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-offset-0"
+                                  style={{ borderColor: 'var(--color-secondary)' }}
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter' && !submittingComment) {
+                                      handleAddAdminComment(incident.incident_id);
+                                    }
+                                  }}
+                                />
+                                <motion.button
+                                  onClick={() => handleAddAdminComment(incident.incident_id)}
+                                  disabled={!newCommentText.trim() || submittingComment}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  style={{ backgroundColor: 'var(--color-primary)' }}
+                                  whileHover={{ scale: submittingComment ? 1 : 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  {submittingComment ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                  ) : (
+                                    <Send size={16} />
+                                  )}
+                                  Send
+                                </motion.button>
+                              </div>
+                            </div>
                           </div>
                         </motion.div>
                       )}

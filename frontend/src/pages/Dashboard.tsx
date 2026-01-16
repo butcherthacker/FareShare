@@ -22,7 +22,11 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  MessageSquare
+  MessageSquare,
+  FileWarning,
+  Plus,
+  Minus,
+  Send
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBookings } from "../hooks/useBookings";
@@ -30,7 +34,8 @@ import { ReviewsList } from "../components/ReviewsList";
 import { ReviewFormModal } from "../components/ReviewFormModal";
 import Background from "../components/Background";
 import { StarRating } from "../components/StarRating";
-import type { Booking, BookingStatus } from "../types";
+import { getMyIncidents, getIncidentComments, addIncidentComment } from "../utils/api";
+import type { Booking, BookingStatus, Incident, IncidentComment } from "../types";
 
 export default function Dashboard() {
   // Auth context for user info
@@ -48,9 +53,18 @@ export default function Dashboard() {
 
   // UI state
   const [role, setRole] = useState<"passenger" | "driver">("passenger");
-  const [activeTab, setActiveTab] = useState<"bookings" | "reviews">("bookings");
+  const [activeTab, setActiveTab] = useState<"bookings" | "reviews" | "incidents">("bookings");
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
+  
+  // Incidents state
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [incidentsLoading, setIncidentsLoading] = useState(false);
+  const [incidentsError, setIncidentsError] = useState<string | null>(null);
+  const [expandedIncidentId, setExpandedIncidentId] = useState<string | null>(null);
+  const [incidentComments, setIncidentComments] = useState<Record<string, IncidentComment[]>>({});
+  const [newCommentText, setNewCommentText] = useState<Record<string, string>>({});
+  const [submittingComment, setSubmittingComment] = useState<string | null>(null);
 
   // Fetch bookings on mount and when role changes
   useEffect(() => {
@@ -58,6 +72,64 @@ export default function Dashboard() {
       fetchMyBookings(role);
     }
   }, [user?.id, role]);
+
+  // Fetch incidents when incidents tab is active
+  useEffect(() => {
+    if (activeTab === "incidents" && user?.id) {
+      fetchIncidents();
+    }
+  }, [activeTab, user?.id]);
+  
+  const fetchIncidents = async () => {
+    setIncidentsLoading(true);
+    setIncidentsError(null);
+    try {
+      const data = await getMyIncidents({ page: 0, limit: 50 });
+      setIncidents(data.incidents);
+    } catch (err: any) {
+      setIncidentsError(err.message || "Failed to load incidents");
+    } finally {
+      setIncidentsLoading(false);
+    }
+  };
+
+  const loadIncidentComments = async (incidentId: string) => {
+    try {
+      const comments = await getIncidentComments(incidentId);
+      setIncidentComments(prev => ({ ...prev, [incidentId]: comments }));
+    } catch (err: any) {
+      console.error("Failed to load comments:", err);
+    }
+  };
+
+  const handleAddComment = async (incidentId: string) => {
+    const commentText = newCommentText[incidentId]?.trim();
+    if (!commentText) return;
+
+    setSubmittingComment(incidentId);
+    try {
+      const newComment = await addIncidentComment(incidentId, { comment_text: commentText });
+      setIncidentComments(prev => ({
+        ...prev,
+        [incidentId]: [...(prev[incidentId] || []), newComment]
+      }));
+      setNewCommentText(prev => ({ ...prev, [incidentId]: "" }));
+    } catch (err: any) {
+      alert(`Failed to add comment: ${err.message}`);
+    } finally {
+      setSubmittingComment(null);
+    }
+  };
+
+  const handleToggleIncident = async (incidentId: string) => {
+    const isExpanding = expandedIncidentId !== incidentId;
+    setExpandedIncidentId(isExpanding ? incidentId : null);
+    
+    // Load comments when expanding
+    if (isExpanding && !incidentComments[incidentId]) {
+      await loadIncidentComments(incidentId);
+    }
+  };
 
   // Filter bookings by role
   const filteredBookings = bookings.filter((booking: Booking) => {
@@ -267,6 +339,19 @@ export default function Dashboard() {
             >
               <MessageSquare size={20} />
               Reviews ({user?.rating_count || 0})
+            </button>
+            <button
+              onClick={() => setActiveTab("incidents")}
+              className={`flex-1 px-6 py-4 font-semibold flex items-center justify-center gap-2 transition-colors ${
+                activeTab === "incidents" ? "border-b-2" : ""
+              }`}
+              style={{
+                color: activeTab === "incidents" ? 'var(--color-primary)' : '#718096',
+                borderColor: activeTab === "incidents" ? 'var(--color-primary)' : 'transparent'
+              }}
+            >
+              <FileWarning size={20} />
+              Reports ({incidents.length})
             </button>
           </div>
         </motion.div>
@@ -493,6 +578,248 @@ export default function Dashboard() {
               </p>
             </div>
             <ReviewsList userId={user.id} />
+          </motion.div>
+        )}
+
+        {/* Incidents Section */}
+        {activeTab === "incidents" && (
+          <motion.div
+            className="bg-white rounded-2xl shadow-lg p-6 md:p-8"
+            style={{ border: '1px solid var(--color-secondary)' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <div className="mb-6">
+              <h2 className="text-xl md:text-2xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+                My Incident Reports
+              </h2>
+              <p className="text-sm text-gray-600">
+                Track status and admin responses for your incident reports
+              </p>
+            </div>
+
+            {incidentsLoading && incidents.length === 0 ? (
+              <div className="text-center py-12">
+                <Loader2 size={48} className="mx-auto mb-4 animate-spin" style={{ color: 'var(--color-primary)' }} />
+                <p className="text-gray-500">Loading incidents...</p>
+              </div>
+            ) : incidentsError ? (
+              <div className="text-center py-12">
+                <AlertCircle size={48} className="mx-auto mb-4 text-red-500" />
+                <p className="text-red-600">{incidentsError}</p>
+              </div>
+            ) : incidents.length > 0 ? (
+              <div className="space-y-4">
+                {incidents.map((incident, index) => {
+                  const isExpanded = expandedIncidentId === incident.id;
+                  const isReporter = incident.reporter_id === user?.id;
+                  const statusColors = {
+                    open: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Under Review' },
+                    reviewed: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Reviewed' },
+                    resolved: { bg: 'bg-green-100', text: 'text-green-800', label: 'Resolved' },
+                    dismissed: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Dismissed' },
+                  };
+                  const statusInfo = statusColors[incident.status as keyof typeof statusColors];
+                  const hasAdminResponse = incident.admin_notes && incident.admin_notes.trim().length > 0;
+
+                  return (
+                    <motion.div
+                      key={incident.id}
+                      className="rounded-xl p-4 md:p-6 hover:shadow-md transition-shadow"
+                      style={{ 
+                        backgroundColor: 'rgba(var(--color-accent-rgb), 0.05)', 
+                        border: '1px solid var(--color-secondary)' 
+                      }}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.06 }}
+                    >
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.bg} ${statusInfo.text}`}>
+                              {statusInfo.label}
+                            </span>
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 capitalize">
+                              {incident.category}
+                            </span>
+                            {hasAdminResponse && (
+                              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                                Admin Response
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {isReporter ? "You reported" : "You were reported by"}{" "}
+                            <span className="font-semibold">
+                              {isReporter 
+                                ? incident.reported_user?.full_name || "Unknown" 
+                                : incident.reporter?.full_name || "Unknown"}
+                            </span>
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Filed: {new Date(incident.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <motion.button
+                          onClick={() => handleToggleIncident(incident.id)}
+                          className="p-2 rounded-lg text-white transition-colors"
+                          style={{ backgroundColor: 'var(--color-accent)' }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {isExpanded ? <Minus size={20} /> : <Plus size={20} />}
+                        </motion.button>
+                      </div>
+
+                      {/* Ride Info */}
+                      {incident.ride && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                          <MapPin size={14} style={{ color: 'var(--color-accent)' }} />
+                          <span>{incident.ride.origin_label || 'Unknown'}</span>
+                          <span className="text-gray-400">→</span>
+                          <MapPin size={14} style={{ color: 'var(--color-primary)' }} />
+                          <span>{incident.ride.destination_label || 'Unknown'}</span>
+                        </div>
+                      )}
+
+                      {/* Expanded Details */}
+                      {isExpanded && (
+                        <motion.div
+                          className="mt-4 pt-4 border-t space-y-4"
+                          style={{ borderColor: 'var(--color-secondary)' }}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                        >
+                          <div>
+                            <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>
+                              Your Report:
+                            </h4>
+                            <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                              {incident.description}
+                            </p>
+                          </div>
+
+                          {hasAdminResponse && (
+                            <div>
+                              <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-accent)' }}>
+                                Admin Response:
+                              </h4>
+                              <p className="text-sm text-gray-700 bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                {incident.admin_notes}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-2">
+                                Last updated: {new Date(incident.updated_at).toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+
+                          {!hasAdminResponse && incident.status === 'open' && (
+                            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                              <p className="font-medium mb-1">Status: Pending Admin Review</p>
+                              <p className="text-xs">
+                                Our team is reviewing your report. You'll be notified when there's an update.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Comments Section */}
+                          <div className="mt-4">
+                            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+                              <MessageSquare size={16} />
+                              Follow-up Discussion ({incidentComments[incident.id]?.length || 0})
+                            </h4>
+                            
+                            {/* Comments List */}
+                            {incidentComments[incident.id] && incidentComments[incident.id].length > 0 && (
+                              <div className="space-y-3 mb-3">
+                                {incidentComments[incident.id].map((comment) => (
+                                  <div
+                                    key={comment.id}
+                                    className={`p-3 rounded-lg ${
+                                      comment.is_admin_comment
+                                        ? 'bg-purple-50 border border-purple-200'
+                                        : 'bg-gray-50 border border-gray-200'
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <span className={`text-xs font-semibold ${
+                                        comment.is_admin_comment ? 'text-purple-700' : 'text-gray-700'
+                                      }`}>
+                                        {comment.is_admin_comment && '🛡️ '}
+                                        {comment.author?.full_name || 'Unknown'}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {new Date(comment.created_at).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-700">{comment.comment_text}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Add Comment Form (only if not resolved) */}
+                            {incident.status !== 'resolved' && (
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={newCommentText[incident.id] || ""}
+                                  onChange={(e) => setNewCommentText(prev => ({
+                                    ...prev,
+                                    [incident.id]: e.target.value
+                                  }))}
+                                  placeholder="Add a follow-up comment..."
+                                  className="flex-1 px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-offset-0"
+                                  style={{ borderColor: 'var(--color-secondary)' }}
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter' && !submittingComment) {
+                                      handleAddComment(incident.id);
+                                    }
+                                  }}
+                                />
+                                <motion.button
+                                  onClick={() => handleAddComment(incident.id)}
+                                  disabled={!newCommentText[incident.id]?.trim() || submittingComment === incident.id}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  style={{ backgroundColor: 'var(--color-primary)' }}
+                                  whileHover={{ scale: submittingComment === incident.id ? 1 : 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  {submittingComment === incident.id ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                  ) : (
+                                    <Send size={16} />
+                                  )}
+                                  Send
+                                </motion.button>
+                              </div>
+                            )}
+
+                            {incident.status === 'resolved' && (
+                              <p className="text-xs text-gray-500 italic">
+                                This incident has been resolved. No further comments can be added.
+                              </p>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileWarning size={48} className="mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500">No incident reports filed</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Report issues with confirmed bookings from the trip details page
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
       </div>
