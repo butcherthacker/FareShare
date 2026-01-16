@@ -50,8 +50,8 @@ export default function IncidentReportModal({
   isOpen,
   onClose,
   reportedUser,
-  rideId,
-  bookingId,
+  rideId: _rideId,
+  bookingId: _bookingId,
   onSubmit,
   loading,
   error
